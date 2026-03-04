@@ -1,329 +1,601 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧪 ラボ在庫管理システム</title>
-<meta name="description" content="ラボの試薬・消耗品の在庫管理とバーコードスキャン機能を提供するシステム">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; }
-  .nav-tab { cursor: pointer; padding: 0.5rem 1rem; border-bottom: 3px solid transparent; transition: all 0.2s; }
-  .nav-tab.active { border-bottom-color: #3B82F6; color: #3B82F6; font-weight: 600; }
-  .nav-tab:hover:not(.active) { border-bottom-color: #93C5FD; color: #60A5FA; }
-  .row-red { background-color: #FEE2E2 !important; }
-  .row-yellow { background-color: #FEF9C3 !important; }
-  .row-green { background-color: #DCFCE7 !important; }
-  tr:nth-child(even) { background-color: #F9FAFB; }
-  tr.row-red, tr.row-yellow, tr.row-green { background-color: inherit; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; }
-  .modal-box { background: white; border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
-  #camera-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
-  #camera-video { width: 100%; border-radius: 8px; }
-  #scan-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 40%; border: 3px solid #3B82F6; border-radius: 8px; pointer-events: none; }
-  #scan-overlay::before, #scan-overlay::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: rgba(59,130,246,0.6); animation: scan-line 2s ease-in-out infinite; }
-  @keyframes scan-line { 0%, 100% { top: 10%; } 50% { top: 90%; } }
-  .btn-primary { background: #2563EB; color: white; padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; transition: background 0.2s; }
-  .btn-primary:hover { background: #1D4ED8; }
-  .btn-success { background: #16A34A; color: white; padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; transition: background 0.2s; }
-  .btn-success:hover { background: #15803D; }
-  .btn-danger { background: #DC2626; color: white; padding: 0.375rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.8rem; transition: background 0.2s; }
-  .btn-danger:hover { background: #B91C1C; }
-  .btn-secondary { background: #6B7280; color: white; padding: 0.375rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.8rem; transition: background 0.2s; }
-  .btn-secondary:hover { background: #4B5563; }
-  .btn-outline { background: white; color: #374151; padding: 0.375rem 0.75rem; border-radius: 6px; border: 1px solid #D1D5DB; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
-  .btn-outline:hover { background: #F9FAFB; }
-  input[type=text], input[type=number], select, textarea {
-    width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #D1D5DB;
-    border-radius: 6px; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
-  }
-  input:focus, select:focus, textarea:focus { border-color: #3B82F6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
-  .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
-  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
-  .badge-red { background: #FEE2E2; color: #DC2626; }
-  .badge-yellow { background: #FEF9C3; color: #CA8A04; }
-  .badge-green { background: #DCFCE7; color: #16A34A; }
-  .badge-gray { background: #F3F4F6; color: #6B7280; }
-  table { width: 100%; border-collapse: collapse; }
-  th { background: #1E3A5F; color: white; padding: 0.75rem 0.5rem; text-align: left; font-size: 0.85rem; position: sticky; top: 0; z-index: 1; }
-  td { padding: 0.6rem 0.5rem; font-size: 0.875rem; border-bottom: 1px solid #E5E7EB; vertical-align: middle; }
-  tr:hover td { filter: brightness(0.97); }
-  .scan-mode-btn { padding: 0.5rem 1.25rem; border-radius: 6px; border: 2px solid #3B82F6; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-  .scan-mode-btn.active { background: #3B82F6; color: white; }
-  .scan-mode-btn:not(.active) { background: white; color: #3B82F6; }
-  .pulse { animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 ラボ在庫管理システム</title>
+  <meta name="description" content="ラボの試薬・消耗品の在庫管理とバーコードスキャン機能を提供するシステム">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F8FAFC;
+    }
+
+    .nav-tab {
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .nav-tab.active {
+      border-bottom-color: #3B82F6;
+      color: #3B82F6;
+      font-weight: 600;
+    }
+
+    .nav-tab:hover:not(.active) {
+      border-bottom-color: #93C5FD;
+      color: #60A5FA;
+    }
+
+    .row-red {
+      background-color: #FEE2E2 !important;
+    }
+
+    .row-yellow {
+      background-color: #FEF9C3 !important;
+    }
+
+    .row-green {
+      background-color: #DCFCE7 !important;
+    }
+
+    tr:nth-child(even) {
+      background-color: #F9FAFB;
+    }
+
+    tr.row-red,
+    tr.row-yellow,
+    tr.row-green {
+      background-color: inherit;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .modal-box {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    #camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    #camera-video {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    #scan-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 40%;
+      border: 3px solid #3B82F6;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    #scan-overlay::before,
+    #scan-overlay::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(59, 130, 246, 0.6);
+      animation: scan-line 2s ease-in-out infinite;
+    }
+
+    @keyframes scan-line {
+
+      0%,
+      100% {
+        top: 10%;
+      }
+
+      50% {
+        top: 90%;
+      }
+    }
+
+    .btn-primary {
+      background: #2563EB;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #1D4ED8;
+    }
+
+    .btn-success {
+      background: #16A34A;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-success:hover {
+      background: #15803D;
+    }
+
+    .btn-danger {
+      background: #DC2626;
+      color: white;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.2s;
+    }
+
+    .btn-danger:hover {
+      background: #B91C1C;
+    }
+
+    .btn-secondary {
+      background: #6B7280;
+      color: white;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: #4B5563;
+    }
+
+    .btn-outline {
+      background: white;
+      color: #374151;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #D1D5DB;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .btn-outline:hover {
+      background: #F9FAFB;
+    }
+
+    input[type=text],
+    input[type=number],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-red {
+      background: #FEE2E2;
+      color: #DC2626;
+    }
+
+    .badge-yellow {
+      background: #FEF9C3;
+      color: #CA8A04;
+    }
+
+    .badge-green {
+      background: #DCFCE7;
+      color: #16A34A;
+    }
+
+    .badge-gray {
+      background: #F3F4F6;
+      color: #6B7280;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: #1E3A5F;
+      color: white;
+      padding: 0.75rem 0.5rem;
+      text-align: left;
+      font-size: 0.85rem;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td {
+      padding: 0.6rem 0.5rem;
+      font-size: 0.875rem;
+      border-bottom: 1px solid #E5E7EB;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      filter: brightness(0.97);
+    }
+
+    .scan-mode-btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      border: 2px solid #3B82F6;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .scan-mode-btn.active {
+      background: #3B82F6;
+      color: white;
+    }
+
+    .scan-mode-btn:not(.active) {
+      background: white;
+      color: #3B82F6;
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
-<!-- Header -->
-<header style="background: #1E3A5F; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <span style="font-size:1.8rem;">🧪</span>
-      <div>
-        <h1 class="text-white font-bold text-xl">ラボ在庫管理システム</h1>
-        <p class="text-blue-300 text-xs">Lab Inventory Manager</p>
-      </div>
-    </div>
-    <div class="flex gap-2">
-      <button onclick="exportCSV()" class="btn-outline text-xs">📥 CSVエクスポート</button>
-      <button onclick="document.getElementById('csvImportInput').click()" class="btn-outline text-xs">📤 CSVインポート</button>
-      <button onclick="exportJSON()" class="btn-outline text-xs">💾 バックアップ</button>
-      <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
-      <input type="file" id="jsonRestoreInput" accept=".json" style="display:none" onchange="restoreJSON(event)">
-    </div>
-  </div>
-  <!-- Navigation -->
-  <div class="max-w-7xl mx-auto px-4 flex gap-0 border-t border-blue-800">
-    <div id="tab-inventory" class="nav-tab active text-white" onclick="showPage('inventory')">
-      <span>📋 在庫一覧</span>
-    </div>
-    <div id="tab-order" class="nav-tab text-blue-200" onclick="showPage('order')">
-      <span>🛒 発注管理</span>
-    </div>
-    <div id="tab-barcode" class="nav-tab text-blue-200" onclick="showPage('barcode')">
-      <span>📷 バーコード</span>
-    </div>
-    <div id="tab-register" class="nav-tab text-blue-200" onclick="showPage('register')">
-      <span>➕ 物品登録</span>
-    </div>
-  </div>
-</header>
-
-<div class="max-w-7xl mx-auto px-4 py-6">
-
-<!-- ===== PAGE: INVENTORY ===== -->
-<div id="page-inventory">
-  <!-- Summary Cards -->
-  <div class="grid grid-cols-3 gap-4 mb-6" id="summary-cards"></div>
-
-  <!-- Filters -->
-  <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center justify-between">
-    <div class="flex gap-2 flex-wrap items-center">
-      <select id="filter-category" onchange="renderInventory()" class="text-sm" style="width:auto;padding:0.35rem 0.6rem;">
-        <option value="">全カテゴリ</option>
-        <option>試薬</option><option>消耗品</option><option>器具</option><option>その他</option>
-      </select>
-      <button id="toggle-alert" onclick="toggleAlertFilter()" class="btn-outline text-sm">🔴 要注意のみ</button>
-      <input type="text" id="search-input" placeholder="🔍 物品名で検索..." onkeyup="renderInventory()" style="width:200px;padding:0.35rem 0.6rem;font-size:0.85rem;">
-    </div>
-    <button onclick="showPage('register')" class="btn-primary text-sm">＋ 物品を追加</button>
-  </div>
-
-  <!-- Table -->
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-    <div style="overflow-x:auto;">
-      <table id="inventory-table">
-        <thead>
-          <tr>
-            <th onclick="sortBy('name')" class="cursor-pointer hover:bg-blue-900">物品名 ↕</th>
-            <th>カテゴリ</th>
-            <th onclick="sortBy('stock')" class="cursor-pointer hover:bg-blue-900">在庫数 ↕</th>
-            <th>単位</th>
-            <th>発注点</th>
-            <th>発注状況</th>
-            <th onclick="sortBy('updatedAt')" class="cursor-pointer hover:bg-blue-900">最終更新 ↕</th>
-            <th>バーコード</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="inventory-body"></tbody>
-      </table>
-    </div>
-    <div id="inventory-empty" class="text-center text-gray-400 py-12 hidden">物品が登録されていません</div>
-  </div>
-</div>
-
-<!-- ===== PAGE: ORDER ===== -->
-<div id="page-order" class="hidden">
-  <h2 class="text-xl font-bold text-gray-800 mb-4">🛒 発注管理</h2>
-
-  <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
-    <h3 class="font-bold text-red-600 mb-3">⚠️ 要発注（発注未済）</h3>
-    <div id="order-needed-list"></div>
-  </div>
-
-  <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
-    <h3 class="font-bold text-yellow-600 mb-3">📦 発注済み（納品待ち）</h3>
-    <div id="order-placed-list"></div>
-  </div>
-
-  <div class="bg-white rounded-xl shadow-sm p-4">
-    <h3 class="font-bold text-gray-700 mb-3">📜 発注履歴（直近10件）</h3>
-    <div id="order-history-list"></div>
-  </div>
-</div>
-
-<!-- ===== PAGE: BARCODE ===== -->
-<div id="page-barcode" class="hidden">
-  <h2 class="text-xl font-bold text-gray-800 mb-4">📷 バーコードスキャン</h2>
-
-  <div class="bg-white rounded-xl shadow-sm p-6">
-    <!-- Mode switcher -->
-    <div class="flex gap-3 mb-6 justify-center">
-      <button id="mode-btn-camera" class="scan-mode-btn active" onclick="setScanMode('camera')">📷 カメラで読み取り</button>
-      <button id="mode-btn-reader" class="scan-mode-btn" onclick="setScanMode('reader')">⌨️ リーダー入力</button>
-    </div>
-
-    <!-- Camera Mode -->
-    <div id="camera-mode">
-      <div id="camera-container" class="mb-4">
-        <video id="camera-video" autoplay playsinline muted></video>
-        <div id="scan-overlay"></div>
-      </div>
-      <div class="text-center mb-3">
-        <button id="camera-start-btn" onclick="startCamera()" class="btn-primary">📷 カメラ起動</button>
-        <button id="camera-stop-btn" onclick="stopCamera()" class="btn-danger hidden ml-2">停止</button>
-      </div>
-      <p class="text-center text-sm text-gray-500">※ カメラはHTTPS または localhost でのみ利用可能です</p>
-    </div>
-
-    <!-- Reader Mode -->
-    <div id="reader-mode" class="hidden">
-      <div class="border-2 border-dashed border-blue-300 rounded-xl p-8 text-center mb-4">
-        <p class="text-gray-600 mb-3 font-semibold">バーコードリーダーをスキャンするか、手動で入力してください</p>
-        <p class="text-gray-400 text-sm mb-4 pulse">🔴 スキャン待機中…</p>
-        <div class="flex gap-2 max-w-xs mx-auto">
-          <input type="text" id="barcode-reader-input" placeholder="バーコード番号を入力" 
-            onkeydown="handleReaderInput(event)" 
-            class="flex-1"
-            autocomplete="off" autocorrect="off" spellcheck="false">
-          <button onclick="processBarcode(document.getElementById('barcode-reader-input').value.trim())" class="btn-primary">読取</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scan Result -->
-    <div id="scan-result" class="hidden mt-6 border-t pt-4">
-      <h3 class="font-bold text-gray-700 mb-3">スキャン結果</h3>
-      <div class="bg-gray-50 rounded-lg p-3 mb-4">
-        <span class="text-sm text-gray-500">バーコード：</span>
-        <span id="scan-barcode-display" class="font-mono font-bold text-blue-700"></span>
-      </div>
-      <div id="scan-found-item" class="hidden">
-        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-          <p class="text-green-700 font-semibold mb-1">✅ 登録済み物品が見つかりました</p>
-          <p id="scan-found-name" class="text-lg font-bold"></p>
-          <p id="scan-found-stock" class="text-gray-600 text-sm"></p>
-        </div>
-        <div class="flex gap-2 flex-wrap">
-          <button onclick="openUpdateModalForScan()" class="btn-success">📝 在庫を更新</button>
-          <button onclick="clearScan()" class="btn-outline">クリア</button>
-        </div>
-      </div>
-      <div id="scan-new-item" class="hidden">
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <p class="text-blue-700 font-semibold">🆕 未登録のバーコードです。物品を登録してください。</p>
-        </div>
-        <button onclick="registerFromBarcode()" class="btn-primary">➕ この物品を新規登録</button>
-        <button onclick="clearScan()" class="btn-outline ml-2">クリア</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== PAGE: REGISTER ===== -->
-<div id="page-register" class="hidden">
-  <div class="bg-white rounded-xl shadow-sm p-6 max-w-2xl">
-    <h2 class="text-xl font-bold text-gray-800 mb-6" id="form-title">➕ 物品を登録</h2>
-    <form onsubmit="saveItem(event)" id="item-form">
-      <input type="hidden" id="edit-id">
-      <div class="grid grid-cols-2 gap-4 mb-4">
-        <div class="col-span-2">
-          <label class="form-label">物品名 <span class="text-red-500">*</span></label>
-          <input type="text" id="f-name" placeholder="例: エタノール 500mL" required>
-        </div>
+  <!-- Header -->
+  <header style="background: #1E3A5F; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span style="font-size:1.8rem;">🧪</span>
         <div>
-          <label class="form-label">カテゴリ <span class="text-red-500">*</span></label>
-          <select id="f-category" required>
-            <option value="">選択してください</option>
-            <option>試薬</option><option>消耗品</option><option>器具</option><option>その他</option>
+          <h1 class="text-white font-bold text-xl">ラボ在庫管理システム</h1>
+          <p class="text-blue-300 text-xs">Lab Inventory Manager</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="exportCSV()" class="btn-outline text-xs">📥 CSVエクスポート</button>
+        <button onclick="document.getElementById('csvImportInput').click()" class="btn-outline text-xs">📤
+          CSVインポート</button>
+        <button onclick="exportJSON()" class="btn-outline text-xs">💾 バックアップ</button>
+        <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
+        <input type="file" id="jsonRestoreInput" accept=".json" style="display:none" onchange="restoreJSON(event)">
+      </div>
+    </div>
+    <!-- Navigation -->
+    <div class="max-w-7xl mx-auto px-4 flex gap-0 border-t border-blue-800">
+      <div id="tab-inventory" class="nav-tab active text-white" onclick="showPage('inventory')">
+        <span>📋 在庫一覧</span>
+      </div>
+      <div id="tab-order" class="nav-tab text-blue-200" onclick="showPage('order')">
+        <span>🛒 発注管理</span>
+      </div>
+      <div id="tab-barcode" class="nav-tab text-blue-200" onclick="showPage('barcode')">
+        <span>📷 バーコード</span>
+      </div>
+      <div id="tab-register" class="nav-tab text-blue-200" onclick="showPage('register')">
+        <span>➕ 物品登録</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 py-6">
+
+    <!-- ===== PAGE: INVENTORY ===== -->
+    <div id="page-inventory">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-3 gap-4 mb-6" id="summary-cards"></div>
+
+      <!-- Filters -->
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex gap-2 flex-wrap items-center">
+          <select id="filter-category" onchange="renderInventory()" class="text-sm"
+            style="width:auto;padding:0.35rem 0.6rem;">
+            <option value="">全カテゴリ</option>
+            <option>試薬</option>
+            <option>消耗品</option>
+            <option>器具</option>
+            <option>その他</option>
           </select>
+          <button id="toggle-alert" onclick="toggleAlertFilter()" class="btn-outline text-sm">🔴 要注意のみ</button>
+          <input type="text" id="search-input" placeholder="🔍 物品名で検索..." onkeyup="renderInventory()"
+            style="width:200px;padding:0.35rem 0.6rem;font-size:0.85rem;">
         </div>
-        <div>
-          <label class="form-label">発注先業者</label>
-          <input type="text" id="f-supplier" placeholder="例: 和光純薬">
+        <button onclick="showPage('register')" class="btn-primary text-sm">＋ 物品を追加</button>
+      </div>
+
+      <!-- Table -->
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div style="overflow-x:auto;">
+          <table id="inventory-table">
+            <thead>
+              <tr>
+                <th onclick="sortBy('name')" class="cursor-pointer hover:bg-blue-900">物品名 ↕</th>
+                <th>カテゴリ</th>
+                <th onclick="sortBy('stock')" class="cursor-pointer hover:bg-blue-900">在庫数 ↕</th>
+                <th>単位</th>
+                <th>発注点</th>
+                <th>発注状況</th>
+                <th onclick="sortBy('updatedAt')" class="cursor-pointer hover:bg-blue-900">最終更新 ↕</th>
+                <th>バーコード</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-body"></tbody>
+          </table>
         </div>
-        <div>
-          <label class="form-label">現在庫数 <span class="text-red-500">*</span></label>
-          <input type="number" id="f-stock" min="0" step="1" placeholder="0" required>
+        <div id="inventory-empty" class="text-center text-gray-400 py-12 hidden">物品が登録されていません</div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: ORDER ===== -->
+    <div id="page-order" class="hidden">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">🛒 発注管理</h2>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <h3 class="font-bold text-red-600 mb-3">⚠️ 要発注（発注未済）</h3>
+        <div id="order-needed-list"></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <h3 class="font-bold text-yellow-600 mb-3">📦 発注済み（納品待ち）</h3>
+        <div id="order-placed-list"></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <h3 class="font-bold text-gray-700 mb-3">📜 発注履歴（直近10件）</h3>
+        <div id="order-history-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: BARCODE ===== -->
+    <div id="page-barcode" class="hidden">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">📷 バーコードスキャン</h2>
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <!-- Mode switcher -->
+        <div class="flex gap-3 mb-6 justify-center">
+          <button id="mode-btn-camera" class="scan-mode-btn active" onclick="setScanMode('camera')">📷 カメラで読み取り</button>
+          <button id="mode-btn-reader" class="scan-mode-btn" onclick="setScanMode('reader')">⌨️ リーダー入力</button>
         </div>
-        <div>
-          <label class="form-label">単位 <span class="text-red-500">*</span></label>
-          <input type="text" id="f-unit" placeholder="例: 本、箱、袋、個" required>
+
+        <!-- Camera Mode -->
+        <div id="camera-mode">
+          <!-- BarcodeDetector用（カメラ映像 + スキャンライン） -->
+          <div id="camera-container" class="mb-4">
+            <video id="camera-video" autoplay playsinline muted style="display:none;"></video>
+            <!-- Quaggaが自前videoを生成するコンテナ -->
+            <div id="quagga-container" style="display:none;"></div>
+            <div id="scan-overlay"></div>
+          </div>
+          <div class="text-center mb-3">
+            <button id="camera-start-btn" onclick="startCamera()" class="btn-primary">📷 カメラ起動</button>
+            <button id="camera-stop-btn" onclick="stopCamera()" class="btn-danger hidden ml-2">停止</button>
+          </div>
+          <div id="scan-engine-label" class="text-center text-xs text-gray-400 mb-1 hidden"></div>
+          <p class="text-center text-sm text-gray-500">※ カメラはHTTPS または localhost でのみ利用可能です</p>
         </div>
-        <div>
-          <label class="form-label">発注点（閾値） <span class="text-red-500">*</span></label>
-          <input type="number" id="f-threshold" min="0" step="1" placeholder="3" required>
-        </div>
-        <div>
-          <label class="form-label">バーコード（任意）</label>
-          <div class="flex gap-2">
-            <input type="text" id="f-barcode" placeholder="JAN/EANコード" class="flex-1" autocomplete="off">
-            <button type="button" onclick="scanBarcodeForForm()" class="btn-outline text-sm" title="カメラでスキャン">📷</button>
+
+        <!-- Reader Mode -->
+        <div id="reader-mode" class="hidden">
+          <div class="border-2 border-dashed border-blue-300 rounded-xl p-8 text-center mb-4">
+            <p class="text-gray-600 mb-3 font-semibold">バーコードリーダーをスキャンするか、手動で入力してください</p>
+            <p class="text-gray-400 text-sm mb-4 pulse">🔴 スキャン待機中…</p>
+            <div class="flex gap-2 max-w-xs mx-auto">
+              <input type="text" id="barcode-reader-input" placeholder="バーコード番号を入力" onkeydown="handleReaderInput(event)"
+                class="flex-1" autocomplete="off" autocorrect="off" spellcheck="false">
+              <button onclick="processBarcode(document.getElementById('barcode-reader-input').value.trim())"
+                class="btn-primary">読取</button>
+            </div>
           </div>
         </div>
-        <div class="col-span-2">
-          <label class="form-label">備考</label>
-          <textarea id="f-notes" rows="2" placeholder="保管条件など"></textarea>
+
+        <!-- Scan Result -->
+        <div id="scan-result" class="hidden mt-6 border-t pt-4">
+          <h3 class="font-bold text-gray-700 mb-3">スキャン結果</h3>
+          <div class="bg-gray-50 rounded-lg p-3 mb-4">
+            <span class="text-sm text-gray-500">バーコード：</span>
+            <span id="scan-barcode-display" class="font-mono font-bold text-blue-700"></span>
+          </div>
+          <div id="scan-found-item" class="hidden">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <p class="text-green-700 font-semibold mb-1">✅ 登録済み物品が見つかりました</p>
+              <p id="scan-found-name" class="text-lg font-bold"></p>
+              <p id="scan-found-stock" class="text-gray-600 text-sm"></p>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="openUpdateModalForScan()" class="btn-success">📝 在庫を更新</button>
+              <button onclick="clearScan()" class="btn-outline">クリア</button>
+            </div>
+          </div>
+          <div id="scan-new-item" class="hidden">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p class="text-blue-700 font-semibold">🆕 未登録のバーコードです。物品を登録してください。</p>
+            </div>
+            <button onclick="registerFromBarcode()" class="btn-primary">➕ この物品を新規登録</button>
+            <button onclick="clearScan()" class="btn-outline ml-2">クリア</button>
+          </div>
         </div>
       </div>
-      <div id="form-error" class="text-red-600 text-sm mb-3 hidden"></div>
-      <div class="flex gap-3">
-        <button type="submit" class="btn-success">💾 保存する</button>
-        <button type="button" onclick="cancelForm()" class="btn-outline">キャンセル</button>
+    </div>
+
+    <!-- ===== PAGE: REGISTER ===== -->
+    <div id="page-register" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm p-6 max-w-2xl">
+        <h2 class="text-xl font-bold text-gray-800 mb-6" id="form-title">➕ 物品を登録</h2>
+        <form onsubmit="saveItem(event)" id="item-form">
+          <input type="hidden" id="edit-id">
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="col-span-2">
+              <label class="form-label">物品名 <span class="text-red-500">*</span></label>
+              <input type="text" id="f-name" placeholder="例: エタノール 500mL" required>
+            </div>
+            <div>
+              <label class="form-label">カテゴリ <span class="text-red-500">*</span></label>
+              <select id="f-category" required>
+                <option value="">選択してください</option>
+                <option>試薬</option>
+                <option>消耗品</option>
+                <option>器具</option>
+                <option>その他</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">発注先業者</label>
+              <input type="text" id="f-supplier" placeholder="例: 和光純薬">
+            </div>
+            <div>
+              <label class="form-label">現在庫数 <span class="text-red-500">*</span></label>
+              <input type="number" id="f-stock" min="0" step="1" placeholder="0" required>
+            </div>
+            <div>
+              <label class="form-label">単位 <span class="text-red-500">*</span></label>
+              <input type="text" id="f-unit" placeholder="例: 本、箱、袋、個" required>
+            </div>
+            <div>
+              <label class="form-label">発注点（閾値） <span class="text-red-500">*</span></label>
+              <input type="number" id="f-threshold" min="0" step="1" placeholder="3" required>
+            </div>
+            <div>
+              <label class="form-label">バーコード（任意）</label>
+              <div class="flex gap-2">
+                <input type="text" id="f-barcode" placeholder="JAN/EANコード" class="flex-1" autocomplete="off">
+                <button type="button" onclick="scanBarcodeForForm()" class="btn-outline text-sm"
+                  title="カメラでスキャン">📷</button>
+              </div>
+            </div>
+            <div class="col-span-2">
+              <label class="form-label">備考</label>
+              <textarea id="f-notes" rows="2" placeholder="保管条件など"></textarea>
+            </div>
+          </div>
+          <div id="form-error" class="text-red-600 text-sm mb-3 hidden"></div>
+          <div class="flex gap-3">
+            <button type="submit" class="btn-success">💾 保存する</button>
+            <button type="button" onclick="cancelForm()" class="btn-outline">キャンセル</button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
+
+  </div><!-- end main -->
+
+  <!-- ===== MODAL: Stock Update ===== -->
+  <div id="update-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeUpdateModal()">
+    <div class="modal-box">
+      <h2 class="text-lg font-bold text-gray-800 mb-1" id="modal-title">在庫数を更新</h2>
+      <p class="text-sm text-gray-500 mb-4" id="modal-item-name"></p>
+      <input type="hidden" id="modal-item-id">
+      <div class="bg-blue-50 rounded-lg p-3 mb-4 text-center">
+        <span class="text-sm text-gray-500">現在の在庫数：</span>
+        <span id="modal-current-stock" class="text-2xl font-bold text-blue-700"></span>
+        <span id="modal-unit" class="text-gray-600 ml-1"></span>
+      </div>
+      <!-- 直接入力 -->
+      <div class="mb-4">
+        <label class="form-label">① 在庫数を直接入力（上書き）</label>
+        <div class="flex gap-2">
+          <input type="number" id="modal-stock-direct" min="0" placeholder="新しい在庫数" class="flex-1">
+          <button onclick="applyDirectStock()" class="btn-primary">更新</button>
+        </div>
+      </div>
+      <hr class="my-4">
+      <!-- 増減入力 -->
+      <div class="mb-4">
+        <label class="form-label">② 入荷・使用で増減</label>
+        <div class="flex gap-2 items-center">
+          <input type="number" id="modal-stock-delta" min="1" placeholder="数量" class="flex-1">
+          <button onclick="applyDelta(1)" class="btn-success">＋ 入荷</button>
+          <button onclick="applyDelta(-1)" class="btn-danger">－ 使用</button>
+        </div>
+      </div>
+      <div class="flex justify-end mt-4">
+        <button onclick="closeUpdateModal()" class="btn-outline">閉じる</button>
+      </div>
+    </div>
   </div>
-</div>
 
-</div><!-- end main -->
-
-<!-- ===== MODAL: Stock Update ===== -->
-<div id="update-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeUpdateModal()">
-  <div class="modal-box">
-    <h2 class="text-lg font-bold text-gray-800 mb-1" id="modal-title">在庫数を更新</h2>
-    <p class="text-sm text-gray-500 mb-4" id="modal-item-name"></p>
-    <input type="hidden" id="modal-item-id">
-    <div class="bg-blue-50 rounded-lg p-3 mb-4 text-center">
-      <span class="text-sm text-gray-500">現在の在庫数：</span>
-      <span id="modal-current-stock" class="text-2xl font-bold text-blue-700"></span>
-      <span id="modal-unit" class="text-gray-600 ml-1"></span>
-    </div>
-    <!-- 直接入力 -->
-    <div class="mb-4">
-      <label class="form-label">① 在庫数を直接入力（上書き）</label>
-      <div class="flex gap-2">
-        <input type="number" id="modal-stock-direct" min="0" placeholder="新しい在庫数" class="flex-1">
-        <button onclick="applyDirectStock()" class="btn-primary">更新</button>
-      </div>
-    </div>
-    <hr class="my-4">
-    <!-- 増減入力 -->
-    <div class="mb-4">
-      <label class="form-label">② 入荷・使用で増減</label>
-      <div class="flex gap-2 items-center">
-        <input type="number" id="modal-stock-delta" min="1" placeholder="数量" class="flex-1">
-        <button onclick="applyDelta(1)" class="btn-success">＋ 入荷</button>
-        <button onclick="applyDelta(-1)" class="btn-danger">－ 使用</button>
-      </div>
-    </div>
-    <div class="flex justify-end mt-4">
-      <button onclick="closeUpdateModal()" class="btn-outline">閉じる</button>
-    </div>
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 hidden z-50">
+    <div class="bg-gray-800 text-white px-5 py-3 rounded-xl shadow-xl text-sm" id="toast-msg"></div>
   </div>
-</div>
 
-<!-- Toast -->
-<div id="toast" class="fixed bottom-6 right-6 hidden z-50">
-  <div class="bg-gray-800 text-white px-5 py-3 rounded-xl shadow-xl text-sm" id="toast-msg"></div>
-</div>
-
-<script>
+  <script>
 // =============================================
 // DATA
 // =============================================
@@ -656,6 +928,8 @@ let currentScanMode = 'camera';
 let cameraStream = null;
 let quaggaRunning = false;
 let _lastScanned = '';
+let _detectionInterval = null;  // BarcodeDetector ポーリング用
+let _usingNativeDetector = false;
 
 function setScanMode(mode) {
   currentScanMode = mode;
@@ -663,52 +937,112 @@ function setScanMode(mode) {
   document.getElementById('reader-mode').classList.toggle('hidden', mode !== 'reader');
   document.getElementById('mode-btn-camera').classList.toggle('active', mode === 'camera');
   document.getElementById('mode-btn-reader').classList.toggle('active', mode === 'reader');
-  if (mode !== 'camera' && quaggaRunning) stopCamera();
+  if (mode !== 'camera') stopCamera();
   if (mode === 'reader') setTimeout(() => document.getElementById('barcode-reader-input').focus(), 100);
 }
 
-function startCamera() {
-  const video = document.getElementById('camera-video');
+async function startCamera() {
   document.getElementById('camera-start-btn').classList.add('hidden');
   document.getElementById('camera-stop-btn').classList.remove('hidden');
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showToast('❌ このブラウザはカメラに対応していません');
-    document.getElementById('camera-start-btn').classList.remove('hidden');
-    document.getElementById('camera-stop-btn').classList.add('hidden');
+    _resetCameraButtons();
     return;
   }
 
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-    .then(stream => {
-      cameraStream = stream;
-      video.srcObject = stream;
-      video.play();
-      startQuagga();
-    })
-    .catch(err => {
-      showToast('❌ カメラにアクセスできません: ' + err.message);
-      document.getElementById('camera-start-btn').classList.remove('hidden');
-      document.getElementById('camera-stop-btn').classList.add('hidden');
-    });
-}
+  // --- 方式A: ネイティブ BarcodeDetector (Chrome/Edge) ---
+  if ('BarcodeDetector' in window) {
+    try {
+      const formats = await BarcodeDetector.getSupportedFormats();
+      const wantFormats = ['ean_13','ean_8','code_128','upc_a','upc_e','qr_code'].filter(f => formats.includes(f));
+      const detector = new BarcodeDetector({ formats: wantFormats.length ? wantFormats : ['ean_13','ean_8','code_128'] });
 
-function startQuagga() {
-  if (typeof Quagga === 'undefined') { showToast('❌ Quaggaライブラリが読み込まれていません'); return; }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      cameraStream = stream;
+      const video = document.getElementById('camera-video');
+      video.srcObject = stream;
+      video.style.display = 'block';
+      document.getElementById('quagga-container').style.display = 'none';
+      await video.play();
+
+      _usingNativeDetector = true;
+      _setEngineLabel('🟢 BarcodeDetector API (高精度)');
+
+      // video が十分なサイズになるまで待ってからポーリング開始
+      _detectionInterval = setInterval(async () => {
+        if (!detector || video.readyState < 2 || video.videoWidth === 0) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            const code = codes[0].rawValue;
+            if (code && code !== _lastScanned) {
+              _lastScanned = code;
+              if (navigator.vibrate) navigator.vibrate(100);
+              processBarcode(code);
+              setTimeout(() => { _lastScanned = ''; }, 3000);
+            }
+          }
+        } catch (_) {}
+      }, 250);
+      return;
+    } catch (err) {
+      console.warn('BarcodeDetector 失敗、Quagga にフォールバック:', err);
+      _stopNativeStream();
+    }
+  }
+
+  // --- 方式B: Quagga2 フォールバック ---
+  _usingNativeDetector = false;
+  _setEngineLabel('🟡 Quagga2 (フォールバック)');
+
+  if (typeof Quagga === 'undefined') {
+    showToast('❌ バーコードスキャナライブラリが読み込まれていません');
+    _resetCameraButtons();
+    return;
+  }
+
+  const container = document.getElementById('quagga-container');
+  container.innerHTML = ''; // 前回の残骸をクリア
+  container.style.display = 'block';
+  document.getElementById('camera-video').style.display = 'none';
+
   Quagga.init({
-    inputStream: { name: 'Live', type: 'LiveStream', target: document.getElementById('camera-video'), constraints: { facingMode: 'environment' } },
-    decoder: { readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'] },
-    locate: true
+    inputStream: {
+      name: 'Live',
+      type: 'LiveStream',
+      target: container,  // Quagga が独自に video を生成するコンテナ
+      constraints: {
+        facingMode: 'environment',
+        width: { min: 640 },
+        height: { min: 480 }
+      }
+    },
+    decoder: {
+      readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'],
+      multiple: false
+    },
+    locate: true,
+    frequency: 10  // フレーム処理頻度
   }, err => {
-    if (err) { showToast('Quagga初期化エラー: ' + err); return; }
+    if (err) {
+      showToast('Quagga エラー: ' + err);
+      _resetCameraButtons();
+      return;
+    }
     Quagga.start();
     quaggaRunning = true;
   });
 
+  // onDetected は一度だけ登録（重複防止）
+  Quagga.offDetected();
   Quagga.onDetected(result => {
     const code = result.codeResult.code;
-    if (code && code !== _lastScanned) {
+    if (code && code !== _lastScanned && result.codeResult.decodedCodes.every(d => !d.error || d.error < 0.5)) {
       _lastScanned = code;
+      if (navigator.vibrate) navigator.vibrate(100);
       processBarcode(code);
       setTimeout(() => { _lastScanned = ''; }, 3000);
     }
@@ -716,12 +1050,36 @@ function startQuagga() {
 }
 
 function stopCamera() {
-  if (quaggaRunning) { try { Quagga.stop(); } catch(e){} quaggaRunning = false; }
+  // BarcodeDetector ポーリング停止
+  if (_detectionInterval) { clearInterval(_detectionInterval); _detectionInterval = null; }
+  // Quagga 停止
+  if (quaggaRunning) { try { Quagga.stop(); Quagga.offDetected(); } catch(e){} quaggaRunning = false; }
+  // カメラストリーム停止
+  _stopNativeStream();
+  // Quaggaコンテナをリセット
+  const qc = document.getElementById('quagga-container');
+  if (qc) { qc.innerHTML = ''; qc.style.display = 'none'; }
+  _usingNativeDetector = false;
+  _resetCameraButtons();
+  _setEngineLabel('');
+}
+
+function _stopNativeStream() {
   if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
   const video = document.getElementById('camera-video');
-  video.srcObject = null;
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+}
+
+function _resetCameraButtons() {
   document.getElementById('camera-start-btn').classList.remove('hidden');
   document.getElementById('camera-stop-btn').classList.add('hidden');
+}
+
+function _setEngineLabel(text) {
+  const el = document.getElementById('scan-engine-label');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('hidden', !text);
 }
 
 function handleReaderInput(event) {
@@ -957,6 +1315,7 @@ function showToast(msg) {
 // =============================================
 initSampleData();
 renderInventory();
-</script>
+  </script>
 </body>
+
 </html>
