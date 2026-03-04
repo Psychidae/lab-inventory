@@ -3,7 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>🧪 ラボ在庫管理システム</title>
   <meta name="description" content="ラボの試薬・消耗品の在庫管理とバーコードスキャン機能を提供するシステム">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,13 +16,32 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #F8FAFC;
+      margin: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
+    /* NAV TABS */
     .nav-tab {
       cursor: pointer;
-      padding: 0.5rem 1rem;
+      padding: 0.5rem 0.75rem;
       border-bottom: 3px solid transparent;
       transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .nav-tab .tab-icon {
+      font-size: 1.2rem;
+    }
+
+    .nav-tab .tab-text {
+      font-size: 0.7rem;
+      white-space: nowrap;
     }
 
     .nav-tab.active {
@@ -33,6 +55,24 @@
       color: #60A5FA;
     }
 
+    @media (min-width: 640px) {
+      .nav-tab {
+        flex-direction: row;
+        gap: 6px;
+        flex: unset;
+        padding: 0.5rem 1rem;
+      }
+
+      .nav-tab .tab-icon {
+        font-size: 1rem;
+      }
+
+      .nav-tab .tab-text {
+        font-size: 0.85rem;
+      }
+    }
+
+    /* TABLE COLOR ROWS */
     .row-red {
       background-color: #FEE2E2 !important;
     }
@@ -55,36 +95,76 @@
       background-color: inherit;
     }
 
+    /* MODAL */
     .modal-overlay {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.5);
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
       z-index: 50;
     }
 
-    .modal-box {
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      width: 90%;
-      max-width: 480px;
-      max-height: 90vh;
-      overflow-y: auto;
+    @media (min-width: 640px) {
+      .modal-overlay {
+        align-items: center;
+      }
     }
 
+    .modal-box {
+      background: white;
+      border-radius: 16px 16px 0 0;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: slide-up 0.3s ease;
+    }
+
+    @media (min-width: 640px) {
+      .modal-box {
+        border-radius: 12px;
+      }
+    }
+
+    @keyframes slide-up {
+      from {
+        transform: translateY(100%);
+      }
+
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    /* CAMERA */
     #camera-container {
       position: relative;
       width: 100%;
-      max-width: 400px;
+      max-width: 100%;
       margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
     }
 
-    #camera-video {
-      width: 100%;
-      border-radius: 8px;
+    @media (min-width: 640px) {
+      #camera-container {
+        max-width: 480px;
+      }
+    }
+
+    #camera-video,
+    #quagga-container,
+    #quagga-container video,
+    #quagga-container canvas {
+      width: 100% !important;
+      height: auto !important;
+      border-radius: 12px;
+      display: block;
+      object-fit: cover;
     }
 
     #scan-overlay {
@@ -92,22 +172,23 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 80%;
-      height: 40%;
-      border: 3px solid #3B82F6;
-      border-radius: 8px;
+      width: 85%;
+      height: 35%;
+      border: 3px solid rgba(59, 130, 246, 0.8);
+      border-radius: 12px;
       pointer-events: none;
+      z-index: 2;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
     }
 
-    #scan-overlay::before,
-    #scan-overlay::after {
+    #scan-overlay::before {
       content: '';
       position: absolute;
       top: 50%;
       left: 0;
       right: 0;
       height: 2px;
-      background: rgba(59, 130, 246, 0.6);
+      background: rgba(59, 130, 246, 0.7);
       animation: scan-line 2s ease-in-out infinite;
     }
 
@@ -123,88 +204,103 @@
       }
     }
 
+    /* BUTTONS - touch friendly */
     .btn-primary {
       background: #2563EB;
       color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       transition: background 0.2s;
+      font-size: 0.9rem;
+      touch-action: manipulation;
     }
 
-    .btn-primary:hover {
+    .btn-primary:hover,
+    .btn-primary:active {
       background: #1D4ED8;
     }
 
     .btn-success {
       background: #16A34A;
       color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       transition: background 0.2s;
+      font-size: 0.9rem;
+      touch-action: manipulation;
     }
 
-    .btn-success:hover {
+    .btn-success:hover,
+    .btn-success:active {
       background: #15803D;
     }
 
     .btn-danger {
       background: #DC2626;
       color: white;
-      padding: 0.375rem 0.75rem;
-      border-radius: 6px;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       font-size: 0.8rem;
       transition: background 0.2s;
+      touch-action: manipulation;
     }
 
-    .btn-danger:hover {
+    .btn-danger:hover,
+    .btn-danger:active {
       background: #B91C1C;
     }
 
     .btn-secondary {
       background: #6B7280;
       color: white;
-      padding: 0.375rem 0.75rem;
-      border-radius: 6px;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       font-size: 0.8rem;
       transition: background 0.2s;
+      touch-action: manipulation;
     }
 
-    .btn-secondary:hover {
+    .btn-secondary:hover,
+    .btn-secondary:active {
       background: #4B5563;
     }
 
     .btn-outline {
       background: white;
       color: #374151;
-      padding: 0.375rem 0.75rem;
-      border-radius: 6px;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
       border: 1px solid #D1D5DB;
       cursor: pointer;
       font-size: 0.8rem;
       transition: all 0.2s;
+      touch-action: manipulation;
     }
 
-    .btn-outline:hover {
-      background: #F9FAFB;
+    .btn-outline:hover,
+    .btn-outline:active {
+      background: #F3F4F6;
     }
 
+    /* INPUTS - bigger touch targets on mobile */
     input[type=text],
     input[type=number],
     select,
     textarea {
       width: 100%;
-      padding: 0.5rem 0.75rem;
+      padding: 0.65rem 0.75rem;
       border: 1px solid #D1D5DB;
-      border-radius: 6px;
-      font-size: 0.9rem;
+      border-radius: 8px;
+      font-size: 16px;
+      /* prevents iOS zoom */
       outline: none;
       transition: border-color 0.2s;
     }
@@ -252,6 +348,7 @@
       color: #6B7280;
     }
 
+    /* TABLE */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -260,17 +357,18 @@
     th {
       background: #1E3A5F;
       color: white;
-      padding: 0.75rem 0.5rem;
+      padding: 0.6rem 0.4rem;
       text-align: left;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       position: sticky;
       top: 0;
       z-index: 1;
+      white-space: nowrap;
     }
 
     td {
-      padding: 0.6rem 0.5rem;
-      font-size: 0.875rem;
+      padding: 0.5rem 0.4rem;
+      font-size: 0.8rem;
       border-bottom: 1px solid #E5E7EB;
       vertical-align: middle;
     }
@@ -279,13 +377,23 @@
       filter: brightness(0.97);
     }
 
+    /* Hide barcode column on mobile */
+    @media (max-width: 639px) {
+      .col-barcode {
+        display: none;
+      }
+    }
+
+    /* SCAN MODE BUTTONS */
     .scan-mode-btn {
-      padding: 0.5rem 1.25rem;
-      border-radius: 6px;
+      padding: 0.6rem 1.5rem;
+      border-radius: 8px;
       border: 2px solid #3B82F6;
       cursor: pointer;
       font-weight: 600;
       transition: all 0.2s;
+      font-size: 0.9rem;
+      touch-action: manipulation;
     }
 
     .scan-mode-btn.active {
@@ -313,6 +421,148 @@
         opacity: 0.5;
       }
     }
+
+    /* MOBILE MENU */
+    .mobile-menu-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 60;
+      display: none;
+    }
+
+    .mobile-menu-overlay.open {
+      display: block;
+    }
+
+    .mobile-menu-panel {
+      position: fixed;
+      top: 0;
+      right: -280px;
+      width: 280px;
+      height: 100%;
+      background: white;
+      z-index: 61;
+      transition: right 0.3s ease;
+      padding: 1.5rem;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
+      overflow-y: auto;
+    }
+
+    .mobile-menu-panel.open {
+      right: 0;
+    }
+
+    .mobile-menu-panel button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+      touch-action: manipulation;
+    }
+
+    .mobile-menu-panel button:active {
+      background: #F3F4F6;
+    }
+
+    /* HEADER */
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+      .header-top {
+        padding: 0.75rem 1rem;
+      }
+    }
+
+    .header-actions-desktop {
+      display: none;
+    }
+
+    @media (min-width: 640px) {
+      .header-actions-desktop {
+        display: flex;
+        gap: 0.5rem;
+      }
+    }
+
+    .header-menu-btn {
+      display: flex;
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: white;
+      padding: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.3rem;
+      touch-action: manipulation;
+    }
+
+    @media (min-width: 640px) {
+      .header-menu-btn {
+        display: none;
+      }
+    }
+
+    /* Summary cards responsive */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .summary-grid {
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+    }
+
+    .summary-card {
+      background: white;
+      border-radius: 10px;
+      padding: 0.6rem 0.75rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    @media (min-width: 640px) {
+      .summary-card {
+        padding: 1rem;
+      }
+    }
+
+    .summary-card .num {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    @media (min-width: 640px) {
+      .summary-card .num {
+        font-size: 2rem;
+      }
+    }
+
+    .summary-card .label {
+      font-size: 0.65rem;
+      color: #6B7280;
+    }
+
+    @media (min-width: 640px) {
+      .summary-card .label {
+        font-size: 0.8rem;
+      }
+    }
   </style>
 </head>
 
@@ -320,52 +570,69 @@
 
   <!-- Header -->
   <header style="background: #1E3A5F; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span style="font-size:1.8rem;">🧪</span>
+    <div class="header-top">
+      <div class="flex items-center gap-2">
+        <span style="font-size:1.5rem;">🧪</span>
         <div>
-          <h1 class="text-white font-bold text-xl">ラボ在庫管理システム</h1>
-          <p class="text-blue-300 text-xs">Lab Inventory Manager</p>
+          <h1 class="text-white font-bold text-sm sm:text-xl" style="line-height:1.2;">ラボ在庫管理</h1>
+          <p class="text-blue-300 text-xs hidden sm:block">Lab Inventory Manager</p>
         </div>
       </div>
-      <div class="flex gap-2">
+      <!-- Desktop actions -->
+      <div class="header-actions-desktop">
         <button onclick="exportCSV()" class="btn-outline text-xs">📥 CSVエクスポート</button>
         <button onclick="document.getElementById('csvImportInput').click()" class="btn-outline text-xs">📤
           CSVインポート</button>
         <button onclick="exportJSON()" class="btn-outline text-xs">💾 バックアップ</button>
-        <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
-        <input type="file" id="jsonRestoreInput" accept=".json" style="display:none" onchange="restoreJSON(event)">
+        <button onclick="document.getElementById('jsonRestoreInput').click()" class="btn-outline text-xs">📂
+          リストア</button>
       </div>
+      <!-- Mobile hamburger -->
+      <button class="header-menu-btn" onclick="toggleMobileMenu()">☰</button>
+      <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
+      <input type="file" id="jsonRestoreInput" accept=".json" style="display:none" onchange="restoreJSON(event)">
     </div>
     <!-- Navigation -->
-    <div class="max-w-7xl mx-auto px-4 flex gap-0 border-t border-blue-800">
+    <div class="flex border-t border-blue-800">
       <div id="tab-inventory" class="nav-tab active text-white" onclick="showPage('inventory')">
-        <span>📋 在庫一覧</span>
+        <span class="tab-icon">📋</span><span class="tab-text">在庫一覧</span>
       </div>
       <div id="tab-order" class="nav-tab text-blue-200" onclick="showPage('order')">
-        <span>🛒 発注管理</span>
+        <span class="tab-icon">🛒</span><span class="tab-text">発注管理</span>
       </div>
       <div id="tab-barcode" class="nav-tab text-blue-200" onclick="showPage('barcode')">
-        <span>📷 バーコード</span>
+        <span class="tab-icon">📷</span><span class="tab-text">バーコード</span>
       </div>
       <div id="tab-register" class="nav-tab text-blue-200" onclick="showPage('register')">
-        <span>➕ 物品登録</span>
+        <span class="tab-icon">➕</span><span class="tab-text">物品登録</span>
       </div>
     </div>
   </header>
 
-  <div class="max-w-7xl mx-auto px-4 py-6">
+  <!-- Mobile Side Menu -->
+  <div id="mobile-menu-overlay" class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
+  <div id="mobile-menu-panel" class="mobile-menu-panel">
+    <h3 style="font-weight:700;margin-bottom:1rem;font-size:1rem;">⚙️ メニュー</h3>
+    <button onclick="exportCSV();toggleMobileMenu()">📥 CSVエクスポート</button>
+    <button onclick="document.getElementById('csvImportInput').click();toggleMobileMenu()">📤 CSVインポート</button>
+    <button onclick="exportJSON();toggleMobileMenu()">💾 バックアップ</button>
+    <button onclick="document.getElementById('jsonRestoreInput').click();toggleMobileMenu()">📂 リストア</button>
+    <hr style="margin:1rem 0;border-color:#E5E7EB;">
+    <button onclick="toggleMobileMenu()" style="color:#6B7280;">✕ 閉じる</button>
+  </div>
+
+  <div class="px-3 sm:px-4 py-3 sm:py-6 max-w-7xl mx-auto">
 
     <!-- ===== PAGE: INVENTORY ===== -->
     <div id="page-inventory">
       <!-- Summary Cards -->
-      <div class="grid grid-cols-3 gap-4 mb-6" id="summary-cards"></div>
+      <div class="summary-grid" id="summary-cards"></div>
 
       <!-- Filters -->
-      <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center justify-between">
+      <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-3 flex flex-wrap gap-2 items-center justify-between">
         <div class="flex gap-2 flex-wrap items-center">
           <select id="filter-category" onchange="renderInventory()" class="text-sm"
-            style="width:auto;padding:0.35rem 0.6rem;">
+            style="width:auto;padding:0.4rem 0.5rem;font-size:14px;">
             <option value="">全カテゴリ</option>
             <option>試薬</option>
             <option>消耗品</option>
@@ -373,26 +640,28 @@
             <option>その他</option>
           </select>
           <button id="toggle-alert" onclick="toggleAlertFilter()" class="btn-outline text-sm">🔴 要注意のみ</button>
-          <input type="text" id="search-input" placeholder="🔍 物品名で検索..." onkeyup="renderInventory()"
-            style="width:200px;padding:0.35rem 0.6rem;font-size:0.85rem;">
         </div>
-        <button onclick="showPage('register')" class="btn-primary text-sm">＋ 物品を追加</button>
+        <div class="flex gap-2 items-center w-full sm:w-auto mt-2 sm:mt-0">
+          <input type="text" id="search-input" placeholder="🔍 検索..." onkeyup="renderInventory()"
+            style="flex:1;padding:0.4rem 0.6rem;font-size:14px;">
+          <button onclick="showPage('register')" class="btn-primary text-sm whitespace-nowrap">＋ 追加</button>
+        </div>
       </div>
 
       <!-- Table -->
       <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div style="overflow-x:auto;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <table id="inventory-table">
             <thead>
               <tr>
-                <th onclick="sortBy('name')" class="cursor-pointer hover:bg-blue-900">物品名 ↕</th>
+                <th onclick="sortBy('name')" class="cursor-pointer">物品名 ↕</th>
                 <th>カテゴリ</th>
-                <th onclick="sortBy('stock')" class="cursor-pointer hover:bg-blue-900">在庫数 ↕</th>
+                <th onclick="sortBy('stock')" class="cursor-pointer">在庫 ↕</th>
                 <th>単位</th>
-                <th>発注点</th>
-                <th>発注状況</th>
-                <th onclick="sortBy('updatedAt')" class="cursor-pointer hover:bg-blue-900">最終更新 ↕</th>
-                <th>バーコード</th>
+                <th>閾値</th>
+                <th>状況</th>
+                <th class="hidden sm:table-cell" onclick="sortBy('updatedAt')" style="cursor:pointer">更新日 ↕</th>
+                <th class="col-barcode">バーコード</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -712,17 +981,17 @@
       const red = items.filter(i => getItemStatus(i) === 'red').length;
       const yellow = items.filter(i => getItemStatus(i) === 'yellow').length;
       document.getElementById('summary-cards').innerHTML = `
-    <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
-      <p class="text-gray-500 text-sm">全物品数</p>
-      <p class="text-3xl font-bold text-blue-600">${total}</p>
+    <div class="summary-card" style="border-left:4px solid #3B82F6;">
+      <p class="label">全物品数</p>
+      <p class="num text-blue-600">${total}</p>
     </div>
-    <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-500">
-      <p class="text-gray-500 text-sm">要確認（未発注）</p>
-      <p class="text-3xl font-bold text-red-600">${red}</p>
+    <div class="summary-card" style="border-left:4px solid #DC2626;">
+      <p class="label">要確認（未発注）</p>
+      <p class="num text-red-600">${red}</p>
     </div>
-    <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-yellow-500">
-      <p class="text-gray-500 text-sm">発注済み（納品待ち）</p>
-      <p class="text-3xl font-bold text-yellow-500">${yellow}</p>
+    <div class="summary-card" style="border-left:4px solid #EAB308;">
+      <p class="label">発注済み</p>
+      <p class="num text-yellow-500">${yellow}</p>
     </div>`;
     }
 
@@ -765,19 +1034,19 @@
           ? `<span class="text-xs font-mono text-gray-500">${item.barcode.slice(0, 8)}…</span>`
           : `<span class="text-xs text-gray-300">—</span>`;
         return `<tr class="${rowClass}">
-      <td class="font-semibold">${item.name}${item.notes ? `<br><span class="text-xs text-gray-400">${item.notes}</span>` : ''}</td>
+      <td class="font-semibold" style="max-width:120px;word-break:break-all;">${item.name}${item.notes ? `<br><span class="text-xs text-gray-400">${item.notes}</span>` : ''}</td>
       <td><span class="badge badge-gray">${item.category}</span></td>
-      <td class="font-bold text-lg ${st === 'red' ? 'text-red-600' : st === 'yellow' ? 'text-yellow-600' : ''}">${item.stock}</td>
+      <td class="font-bold ${st === 'red' ? 'text-red-600' : st === 'yellow' ? 'text-yellow-600' : ''}">${item.stock}</td>
       <td class="text-gray-600">${item.unit}</td>
       <td>${item.threshold}</td>
       <td>${badge}</td>
-      <td class="text-xs text-gray-500">${fmtDate(item.updatedAt)}</td>
-      <td>${bcDisplay}</td>
+      <td class="text-xs text-gray-500 hidden sm:table-cell">${fmtDate(item.updatedAt)}</td>
+      <td class="col-barcode">${bcDisplay}</td>
       <td>
-        <div class="flex gap-1 flex-wrap">
-          <button onclick="openUpdateModal('${item.id}')" class="btn-primary text-xs">📝 更新</button>
-          <button onclick="editItem('${item.id}')" class="btn-outline text-xs">✏️</button>
-          <button onclick="deleteItem('${item.id}')" class="btn-danger">🗑️</button>
+        <div class="flex gap-1 flex-nowrap">
+          <button onclick="openUpdateModal('${item.id}')" class="btn-primary text-xs" style="padding:0.3rem 0.5rem;">📝</button>
+          <button onclick="editItem('${item.id}')" class="btn-outline text-xs" style="padding:0.3rem 0.5rem;">✏️</button>
+          <button onclick="deleteItem('${item.id}')" class="btn-danger" style="padding:0.3rem 0.5rem;">🗑️</button>
         </div>
       </td>
     </tr>`;
@@ -1389,6 +1658,16 @@
       t.classList.remove('hidden');
       if (_toastTimer) clearTimeout(_toastTimer);
       _toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    // =============================================
+    // MOBILE MENU
+    // =============================================
+    function toggleMobileMenu() {
+      const overlay = document.getElementById('mobile-menu-overlay');
+      const panel = document.getElementById('mobile-menu-panel');
+      overlay.classList.toggle('open');
+      panel.classList.toggle('open');
     }
 
     // =============================================
