@@ -484,11 +484,39 @@
             </div>
           </div>
           <div id="scan-new-item" class="hidden">
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p class="text-blue-700 font-semibold">🆕 未登録のバーコードです。物品を登録してください。</p>
+            <!-- ローディング表示 -->
+            <div id="scan-loading" class="hidden text-center py-4">
+              <svg class="animate-spin inline-block w-6 h-6 text-blue-500" xmlns="http://www.w3.org/2000/svg"
+                fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span class="ml-2 text-gray-500 text-sm">商品情報を取得中…</span>
             </div>
-            <button onclick="registerFromBarcode()" class="btn-primary">➕ この物品を新規登録</button>
-            <button onclick="clearScan()" class="btn-outline ml-2">クリア</button>
+            <!-- 商品情報取得成功 -->
+            <div id="scan-product-info" class="hidden">
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                <p class="text-blue-600 text-xs font-semibold mb-2">📦 商品データベースより自動取得</p>
+                <p class="font-bold text-gray-800 text-lg" id="scan-product-name"></p>
+                <p class="text-gray-500 text-sm" id="scan-product-brand"></p>
+                <p class="text-gray-400 text-xs mt-1" id="scan-product-category"></p>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <button onclick="registerFromBarcode()" class="btn-success">➕ この内容で登録</button>
+                <button onclick="clearScan()" class="btn-outline">キャンセル</button>
+              </div>
+            </div>
+            <!-- 取得失敗または未登録 -->
+            <div id="scan-no-product" class="hidden">
+              <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-3">
+                <p class="text-gray-600 font-semibold">🔍 商品情報が見つかりませんでした</p>
+                <p class="text-gray-400 text-xs mt-1">手動で入力して登録してください</p>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <button onclick="registerFromBarcode()" class="btn-primary">➕ 手動で登録</button>
+                <button onclick="clearScan()" class="btn-outline">キャンセル</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -596,94 +624,94 @@
   </div>
 
   <script>
-// =============================================
-// DATA
-// =============================================
-const ITEMS_KEY = 'lab_inventory_items';
-const ORDERS_KEY = 'lab_inventory_orders';
+    // =============================================
+    // DATA
+    // =============================================
+    const ITEMS_KEY = 'lab_inventory_items';
+    const ORDERS_KEY = 'lab_inventory_orders';
 
-function loadItems() {
-  try { return JSON.parse(localStorage.getItem(ITEMS_KEY)) || []; } catch { return []; }
-}
-function saveItems(items) {
-  localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
-}
-function loadOrders() {
-  try { return JSON.parse(localStorage.getItem(ORDERS_KEY)) || []; } catch { return []; }
-}
-function saveOrders(orders) {
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-}
-function uuid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-}
-function now() { return new Date().toISOString(); }
-function fmtDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
+    function loadItems() {
+      try { return JSON.parse(localStorage.getItem(ITEMS_KEY)) || []; } catch { return []; }
+    }
+    function saveItems(items) {
+      localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+    }
+    function loadOrders() {
+      try { return JSON.parse(localStorage.getItem(ORDERS_KEY)) || []; } catch { return []; }
+    }
+    function saveOrders(orders) {
+      localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    }
+    function uuid() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+    function now() { return new Date().toISOString(); }
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
 
-// Sample data
-function initSampleData() {
-  if (loadItems().length > 0) return;
-  const samples = [
-    { id:uuid(), name:'エタノール 500mL', barcode:'4987254001234', category:'試薬', stock:2, unit:'本', threshold:3, supplier:'和光純薬', notes:'冷暗所保管', orderStatus:'none', orderDate:null, createdAt:now(), updatedAt:now() },
-    { id:uuid(), name:'ピペットチップ 1000μL', barcode:'4560116800001', category:'消耗品', stock:15, unit:'箱', threshold:10, supplier:'ニッポンジーン', notes:'', orderStatus:'ordered', orderDate:now(), createdAt:now(), updatedAt:now() },
-    { id:uuid(), name:'マイクロチューブ 1.5mL', barcode:'', category:'消耗品', stock:50, unit:'袋', threshold:20, supplier:'', notes:'', orderStatus:'none', orderDate:null, createdAt:now(), updatedAt:now() },
-    { id:uuid(), name:'PBS バッファ 500mL', barcode:'', category:'試薬', stock:5, unit:'本', threshold:5, supplier:'シグマアルドリッチ', notes:'4℃保管', orderStatus:'none', orderDate:null, createdAt:now(), updatedAt:now() },
-  ];
-  saveItems(samples);
-}
+    // Sample data
+    function initSampleData() {
+      if (loadItems().length > 0) return;
+      const samples = [
+        { id: uuid(), name: 'エタノール 500mL', barcode: '4987254001234', category: '試薬', stock: 2, unit: '本', threshold: 3, supplier: '和光純薬', notes: '冷暗所保管', orderStatus: 'none', orderDate: null, createdAt: now(), updatedAt: now() },
+        { id: uuid(), name: 'ピペットチップ 1000μL', barcode: '4560116800001', category: '消耗品', stock: 15, unit: '箱', threshold: 10, supplier: 'ニッポンジーン', notes: '', orderStatus: 'ordered', orderDate: now(), createdAt: now(), updatedAt: now() },
+        { id: uuid(), name: 'マイクロチューブ 1.5mL', barcode: '', category: '消耗品', stock: 50, unit: '袋', threshold: 20, supplier: '', notes: '', orderStatus: 'none', orderDate: null, createdAt: now(), updatedAt: now() },
+        { id: uuid(), name: 'PBS バッファ 500mL', barcode: '', category: '試薬', stock: 5, unit: '本', threshold: 5, supplier: 'シグマアルドリッチ', notes: '4℃保管', orderStatus: 'none', orderDate: null, createdAt: now(), updatedAt: now() },
+      ];
+      saveItems(samples);
+    }
 
-// =============================================
-// NAVIGATION
-// =============================================
-let currentPage = 'inventory';
-function showPage(name) {
-  ['inventory','order','barcode','register'].forEach(p => {
-    document.getElementById('page-' + p).classList.toggle('hidden', p !== name);
-    const tab = document.getElementById('tab-' + p);
-    tab.classList.toggle('active', p === name);
-    tab.classList.toggle('text-white', p === name);
-    tab.classList.toggle('text-blue-200', p !== name);
-  });
-  currentPage = name;
-  if (name === 'inventory') renderInventory();
-  if (name === 'order') renderOrderPage();
-  if (name === 'barcode') {
-    setScanMode(currentScanMode);
-    if (currentScanMode === 'reader') setTimeout(() => document.getElementById('barcode-reader-input').focus(), 100);
-  }
-  if (name === 'register') {
-    // only reset if not coming from barcode page with prefill
-    if (!_barcodeFormPrefill) resetForm();
-    _barcodeFormPrefill = false;
-  }
-}
+    // =============================================
+    // NAVIGATION
+    // =============================================
+    let currentPage = 'inventory';
+    function showPage(name) {
+      ['inventory', 'order', 'barcode', 'register'].forEach(p => {
+        document.getElementById('page-' + p).classList.toggle('hidden', p !== name);
+        const tab = document.getElementById('tab-' + p);
+        tab.classList.toggle('active', p === name);
+        tab.classList.toggle('text-white', p === name);
+        tab.classList.toggle('text-blue-200', p !== name);
+      });
+      currentPage = name;
+      if (name === 'inventory') renderInventory();
+      if (name === 'order') renderOrderPage();
+      if (name === 'barcode') {
+        setScanMode(currentScanMode);
+        if (currentScanMode === 'reader') setTimeout(() => document.getElementById('barcode-reader-input').focus(), 100);
+      }
+      if (name === 'register') {
+        // only reset if not coming from barcode page with prefill
+        if (!_barcodeFormPrefill) resetForm();
+        _barcodeFormPrefill = false;
+      }
+    }
 
-// =============================================
-// INVENTORY PAGE
-// =============================================
-let sortField = 'name';
-let sortAsc = true;
-let alertFilterOn = false;
+    // =============================================
+    // INVENTORY PAGE
+    // =============================================
+    let sortField = 'name';
+    let sortAsc = true;
+    let alertFilterOn = false;
 
-function getItemStatus(item) {
-  if (item.stock <= item.threshold) {
-    return item.orderStatus === 'ordered' ? 'yellow' : 'red';
-  }
-  return 'green';
-}
+    function getItemStatus(item) {
+      if (item.stock <= item.threshold) {
+        return item.orderStatus === 'ordered' ? 'yellow' : 'red';
+      }
+      return 'green';
+    }
 
-function renderSummary(items) {
-  const total = items.length;
-  const red = items.filter(i => getItemStatus(i) === 'red').length;
-  const yellow = items.filter(i => getItemStatus(i) === 'yellow').length;
-  document.getElementById('summary-cards').innerHTML = `
+    function renderSummary(items) {
+      const total = items.length;
+      const red = items.filter(i => getItemStatus(i) === 'red').length;
+      const yellow = items.filter(i => getItemStatus(i) === 'yellow').length;
+      document.getElementById('summary-cards').innerHTML = `
     <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
       <p class="text-gray-500 text-sm">全物品数</p>
       <p class="text-3xl font-bold text-blue-600">${total}</p>
@@ -696,50 +724,50 @@ function renderSummary(items) {
       <p class="text-gray-500 text-sm">発注済み（納品待ち）</p>
       <p class="text-3xl font-bold text-yellow-500">${yellow}</p>
     </div>`;
-}
+    }
 
-function sortBy(field) {
-  if (sortField === field) sortAsc = !sortAsc;
-  else { sortField = field; sortAsc = true; }
-  renderInventory();
-}
+    function sortBy(field) {
+      if (sortField === field) sortAsc = !sortAsc;
+      else { sortField = field; sortAsc = true; }
+      renderInventory();
+    }
 
-function renderInventory() {
-  let items = loadItems();
-  renderSummary(items);
+    function renderInventory() {
+      let items = loadItems();
+      renderSummary(items);
 
-  const cat = document.getElementById('filter-category').value;
-  const search = document.getElementById('search-input').value.toLowerCase();
-  if (cat) items = items.filter(i => i.category === cat);
-  if (search) items = items.filter(i => i.name.toLowerCase().includes(search));
-  if (alertFilterOn) items = items.filter(i => getItemStatus(i) !== 'green');
+      const cat = document.getElementById('filter-category').value;
+      const search = document.getElementById('search-input').value.toLowerCase();
+      if (cat) items = items.filter(i => i.category === cat);
+      if (search) items = items.filter(i => i.name.toLowerCase().includes(search));
+      if (alertFilterOn) items = items.filter(i => getItemStatus(i) !== 'green');
 
-  items.sort((a, b) => {
-    let va = a[sortField] ?? '', vb = b[sortField] ?? '';
-    if (typeof va === 'number') return sortAsc ? va - vb : vb - va;
-    return sortAsc ? String(va).localeCompare(String(vb), 'ja') : String(vb).localeCompare(String(va), 'ja');
-  });
+      items.sort((a, b) => {
+        let va = a[sortField] ?? '', vb = b[sortField] ?? '';
+        if (typeof va === 'number') return sortAsc ? va - vb : vb - va;
+        return sortAsc ? String(va).localeCompare(String(vb), 'ja') : String(vb).localeCompare(String(va), 'ja');
+      });
 
-  const tbody = document.getElementById('inventory-body');
-  const empty = document.getElementById('inventory-empty');
-  if (items.length === 0) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
+      const tbody = document.getElementById('inventory-body');
+      const empty = document.getElementById('inventory-empty');
+      if (items.length === 0) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
 
-  tbody.innerHTML = items.map(item => {
-    const st = getItemStatus(item);
-    const rowClass = st === 'red' ? 'row-red' : st === 'yellow' ? 'row-yellow' : '';
-    const badge = st === 'red'
-      ? `<span class="badge badge-red">🔴 未発注</span>`
-      : st === 'yellow'
-      ? `<span class="badge badge-yellow">🟡 発注済</span>`
-      : `<span class="badge badge-green">🟢 正常</span>`;
-    const bcDisplay = item.barcode
-      ? `<span class="text-xs font-mono text-gray-500">${item.barcode.slice(0,8)}…</span>`
-      : `<span class="text-xs text-gray-300">—</span>`;
-    return `<tr class="${rowClass}">
+      tbody.innerHTML = items.map(item => {
+        const st = getItemStatus(item);
+        const rowClass = st === 'red' ? 'row-red' : st === 'yellow' ? 'row-yellow' : '';
+        const badge = st === 'red'
+          ? `<span class="badge badge-red">🔴 未発注</span>`
+          : st === 'yellow'
+            ? `<span class="badge badge-yellow">🟡 発注済</span>`
+            : `<span class="badge badge-green">🟢 正常</span>`;
+        const bcDisplay = item.barcode
+          ? `<span class="text-xs font-mono text-gray-500">${item.barcode.slice(0, 8)}…</span>`
+          : `<span class="text-xs text-gray-300">—</span>`;
+        return `<tr class="${rowClass}">
       <td class="font-semibold">${item.name}${item.notes ? `<br><span class="text-xs text-gray-400">${item.notes}</span>` : ''}</td>
       <td><span class="badge badge-gray">${item.category}</span></td>
-      <td class="font-bold text-lg ${st==='red'?'text-red-600':st==='yellow'?'text-yellow-600':''}">${item.stock}</td>
+      <td class="font-bold text-lg ${st === 'red' ? 'text-red-600' : st === 'yellow' ? 'text-yellow-600' : ''}">${item.stock}</td>
       <td class="text-gray-600">${item.unit}</td>
       <td>${item.threshold}</td>
       <td>${badge}</td>
@@ -753,102 +781,102 @@ function renderInventory() {
         </div>
       </td>
     </tr>`;
-  }).join('');
+      }).join('');
 
-  lucide.createIcons();
-}
+      lucide.createIcons();
+    }
 
-function toggleAlertFilter() {
-  alertFilterOn = !alertFilterOn;
-  document.getElementById('toggle-alert').classList.toggle('bg-red-100', alertFilterOn);
-  renderInventory();
-}
+    function toggleAlertFilter() {
+      alertFilterOn = !alertFilterOn;
+      document.getElementById('toggle-alert').classList.toggle('bg-red-100', alertFilterOn);
+      renderInventory();
+    }
 
-// =============================================
-// UPDATE MODAL
-// =============================================
-let _updateModalFromScan = false;
-let _scanFoundItemId = null;
+    // =============================================
+    // UPDATE MODAL
+    // =============================================
+    let _updateModalFromScan = false;
+    let _scanFoundItemId = null;
 
-function openUpdateModal(id) {
-  const items = loadItems();
-  const item = items.find(i => i.id === id);
-  if (!item) return;
-  document.getElementById('modal-item-id').value = id;
-  document.getElementById('modal-title').textContent = '在庫数を更新';
-  document.getElementById('modal-item-name').textContent = item.name;
-  document.getElementById('modal-current-stock').textContent = item.stock;
-  document.getElementById('modal-unit').textContent = item.unit;
-  document.getElementById('modal-stock-direct').value = '';
-  document.getElementById('modal-stock-delta').value = '';
-  document.getElementById('update-modal').classList.remove('hidden');
-}
+    function openUpdateModal(id) {
+      const items = loadItems();
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      document.getElementById('modal-item-id').value = id;
+      document.getElementById('modal-title').textContent = '在庫数を更新';
+      document.getElementById('modal-item-name').textContent = item.name;
+      document.getElementById('modal-current-stock').textContent = item.stock;
+      document.getElementById('modal-unit').textContent = item.unit;
+      document.getElementById('modal-stock-direct').value = '';
+      document.getElementById('modal-stock-delta').value = '';
+      document.getElementById('update-modal').classList.remove('hidden');
+    }
 
-function openUpdateModalForScan() {
-  if (_scanFoundItemId) { _updateModalFromScan = true; openUpdateModal(_scanFoundItemId); }
-}
+    function openUpdateModalForScan() {
+      if (_scanFoundItemId) { _updateModalFromScan = true; openUpdateModal(_scanFoundItemId); }
+    }
 
-function closeUpdateModal() {
-  document.getElementById('update-modal').classList.add('hidden');
-  _updateModalFromScan = false;
-}
+    function closeUpdateModal() {
+      document.getElementById('update-modal').classList.add('hidden');
+      _updateModalFromScan = false;
+    }
 
-function applyDirectStock() {
-  const id = document.getElementById('modal-item-id').value;
-  const val = parseInt(document.getElementById('modal-stock-direct').value);
-  if (isNaN(val) || val < 0) { showToast('有効な数値を入力してください'); return; }
-  updateStock(id, val, true);
-}
+    function applyDirectStock() {
+      const id = document.getElementById('modal-item-id').value;
+      const val = parseInt(document.getElementById('modal-stock-direct').value);
+      if (isNaN(val) || val < 0) { showToast('有効な数値を入力してください'); return; }
+      updateStock(id, val, true);
+    }
 
-function applyDelta(sign) {
-  const id = document.getElementById('modal-item-id').value;
-  const delta = parseInt(document.getElementById('modal-stock-delta').value);
-  if (isNaN(delta) || delta <= 0) { showToast('数量を入力してください'); return; }
-  const items = loadItems();
-  const item = items.find(i => i.id === id);
-  const newStock = Math.max(0, item.stock + sign * delta);
-  updateStock(id, newStock, true);
-}
+    function applyDelta(sign) {
+      const id = document.getElementById('modal-item-id').value;
+      const delta = parseInt(document.getElementById('modal-stock-delta').value);
+      if (isNaN(delta) || delta <= 0) { showToast('数量を入力してください'); return; }
+      const items = loadItems();
+      const item = items.find(i => i.id === id);
+      const newStock = Math.max(0, item.stock + sign * delta);
+      updateStock(id, newStock, true);
+    }
 
-function updateStock(id, newStock, isAbsolute) {
-  const items = loadItems();
-  const idx = items.findIndex(i => i.id === id);
-  if (idx < 0) return;
-  if (isAbsolute) items[idx].stock = newStock;
-  items[idx].updatedAt = now();
-  // If newly received and was ordered, reset order status
-  if (_updateModalFromScan && items[idx].orderStatus === 'ordered') {
-    // keep ordered status, user should use order page to mark delivered
-  }
-  saveItems(items);
-  document.getElementById('modal-current-stock').textContent = items[idx].stock;
-  document.getElementById('modal-stock-direct').value = '';
-  document.getElementById('modal-stock-delta').value = '';
-  showToast('✅ 在庫数を更新しました');
-  if (currentPage === 'inventory') renderInventory();
-  if (_scanFoundItemId) {
-    document.getElementById('scan-found-stock').textContent = `在庫: ${items[idx].stock} ${items[idx].unit}`;
-  }
-  closeUpdateModal();
-}
+    function updateStock(id, newStock, isAbsolute) {
+      const items = loadItems();
+      const idx = items.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      if (isAbsolute) items[idx].stock = newStock;
+      items[idx].updatedAt = now();
+      // If newly received and was ordered, reset order status
+      if (_updateModalFromScan && items[idx].orderStatus === 'ordered') {
+        // keep ordered status, user should use order page to mark delivered
+      }
+      saveItems(items);
+      document.getElementById('modal-current-stock').textContent = items[idx].stock;
+      document.getElementById('modal-stock-direct').value = '';
+      document.getElementById('modal-stock-delta').value = '';
+      showToast('✅ 在庫数を更新しました');
+      if (currentPage === 'inventory') renderInventory();
+      if (_scanFoundItemId) {
+        document.getElementById('scan-found-stock').textContent = `在庫: ${items[idx].stock} ${items[idx].unit}`;
+      }
+      closeUpdateModal();
+    }
 
-// =============================================
-// ORDER PAGE
-// =============================================
-function renderOrderPage() {
-  const items = loadItems();
-  const orders = loadOrders();
+    // =============================================
+    // ORDER PAGE
+    // =============================================
+    function renderOrderPage() {
+      const items = loadItems();
+      const orders = loadOrders();
 
-  const needed = items.filter(i => i.stock <= i.threshold && i.orderStatus === 'none');
-  const placed = items.filter(i => i.orderStatus === 'ordered');
+      const needed = items.filter(i => i.stock <= i.threshold && i.orderStatus === 'none');
+      const placed = items.filter(i => i.orderStatus === 'ordered');
 
-  document.getElementById('order-needed-list').innerHTML = needed.length === 0
-    ? '<p class="text-gray-400 text-sm">要発注品はありません 🎉</p>'
-    : `<table class="w-full text-sm"><thead><tr class="bg-red-50">
+      document.getElementById('order-needed-list').innerHTML = needed.length === 0
+        ? '<p class="text-gray-400 text-sm">要発注品はありません 🎉</p>'
+        : `<table class="w-full text-sm"><thead><tr class="bg-red-50">
         <th class="text-left p-2">物品名</th><th class="text-left p-2">在庫</th>
         <th class="text-left p-2">発注点</th><th class="text-left p-2">業者</th><th class="p-2">操作</th>
       </tr></thead><tbody>` +
-      needed.map(i => `<tr class="border-b">
+        needed.map(i => `<tr class="border-b">
         <td class="p-2 font-semibold">${i.name}</td>
         <td class="p-2 text-red-600 font-bold">${i.stock} ${i.unit}</td>
         <td class="p-2">${i.threshold}</td>
@@ -856,13 +884,13 @@ function renderOrderPage() {
         <td class="p-2"><button onclick="markOrdered('${i.id}')" class="btn-primary text-xs">発注済みにする</button></td>
       </tr>`).join('') + '</tbody></table>';
 
-  document.getElementById('order-placed-list').innerHTML = placed.length === 0
-    ? '<p class="text-gray-400 text-sm">発注済み品はありません</p>'
-    : `<table class="w-full text-sm"><thead><tr class="bg-yellow-50">
+      document.getElementById('order-placed-list').innerHTML = placed.length === 0
+        ? '<p class="text-gray-400 text-sm">発注済み品はありません</p>'
+        : `<table class="w-full text-sm"><thead><tr class="bg-yellow-50">
         <th class="text-left p-2">物品名</th><th class="text-left p-2">発注日</th>
         <th class="text-left p-2">業者</th><th class="p-2">操作</th>
       </tr></thead><tbody>` +
-      placed.map(i => `<tr class="border-b">
+        placed.map(i => `<tr class="border-b">
         <td class="p-2 font-semibold">${i.name}</td>
         <td class="p-2 text-xs text-gray-500">${fmtDate(i.orderDate)}</td>
         <td class="p-2 text-gray-500">${i.supplier || '—'}</td>
@@ -872,449 +900,502 @@ function renderOrderPage() {
         </td>
       </tr>`).join('') + '</tbody></table>';
 
-  document.getElementById('order-history-list').innerHTML = orders.length === 0
-    ? '<p class="text-gray-400 text-sm">履歴なし</p>'
-    : `<table class="w-full text-sm"><thead><tr class="bg-gray-50">
+      document.getElementById('order-history-list').innerHTML = orders.length === 0
+        ? '<p class="text-gray-400 text-sm">履歴なし</p>'
+        : `<table class="w-full text-sm"><thead><tr class="bg-gray-50">
         <th class="text-left p-2">物品名</th><th class="text-left p-2">発注日</th>
         <th class="text-left p-2">業者</th>
       </tr></thead><tbody>` +
-      orders.slice(-10).reverse().map(o => `<tr class="border-b">
+        orders.slice(-10).reverse().map(o => `<tr class="border-b">
         <td class="p-2">${o.itemName}</td>
         <td class="p-2 text-xs text-gray-500">${fmtDate(o.orderedAt)}</td>
         <td class="p-2 text-gray-500">${o.supplier || '—'}</td>
       </tr>`).join('') + '</tbody></table>';
-}
+    }
 
-function markOrdered(id) {
-  const items = loadItems();
-  const idx = items.findIndex(i => i.id === id);
-  if (idx < 0) return;
-  items[idx].orderStatus = 'ordered';
-  items[idx].orderDate = now();
-  saveItems(items);
-  const orders = loadOrders();
-  orders.push({ id: uuid(), itemId: id, itemName: items[idx].name, orderedAt: now(), supplier: items[idx].supplier });
-  saveOrders(orders);
-  showToast('📦 発注済みに変更しました');
-  renderOrderPage();
-}
+    function markOrdered(id) {
+      const items = loadItems();
+      const idx = items.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      items[idx].orderStatus = 'ordered';
+      items[idx].orderDate = now();
+      saveItems(items);
+      const orders = loadOrders();
+      orders.push({ id: uuid(), itemId: id, itemName: items[idx].name, orderedAt: now(), supplier: items[idx].supplier });
+      saveOrders(orders);
+      showToast('📦 発注済みに変更しました');
+      renderOrderPage();
+    }
 
-function markDelivered(id) {
-  const items = loadItems();
-  const idx = items.findIndex(i => i.id === id);
-  if (idx < 0) return;
-  items[idx].orderStatus = 'none';
-  items[idx].orderDate = null;
-  saveItems(items);
-  openUpdateModal(id);
-  renderOrderPage();
-}
+    function markDelivered(id) {
+      const items = loadItems();
+      const idx = items.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      items[idx].orderStatus = 'none';
+      items[idx].orderDate = null;
+      saveItems(items);
+      openUpdateModal(id);
+      renderOrderPage();
+    }
 
-function cancelOrder(id) {
-  const items = loadItems();
-  const idx = items.findIndex(i => i.id === id);
-  if (idx < 0) return;
-  items[idx].orderStatus = 'none';
-  items[idx].orderDate = null;
-  saveItems(items);
-  showToast('発注をキャンセルしました');
-  renderOrderPage();
-}
+    function cancelOrder(id) {
+      const items = loadItems();
+      const idx = items.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      items[idx].orderStatus = 'none';
+      items[idx].orderDate = null;
+      saveItems(items);
+      showToast('発注をキャンセルしました');
+      renderOrderPage();
+    }
 
-// =============================================
-// BARCODE PAGE
-// =============================================
-let currentScanMode = 'camera';
-let cameraStream = null;
-let quaggaRunning = false;
-let _lastScanned = '';
-let _detectionInterval = null;  // BarcodeDetector ポーリング用
-let _usingNativeDetector = false;
+    // =============================================
+    // BARCODE PAGE
+    // =============================================
+    let currentScanMode = 'camera';
+    let cameraStream = null;
+    let quaggaRunning = false;
+    let _lastScanned = '';
+    let _detectionInterval = null;  // BarcodeDetector ポーリング用
+    let _usingNativeDetector = false;
 
-function setScanMode(mode) {
-  currentScanMode = mode;
-  document.getElementById('camera-mode').classList.toggle('hidden', mode !== 'camera');
-  document.getElementById('reader-mode').classList.toggle('hidden', mode !== 'reader');
-  document.getElementById('mode-btn-camera').classList.toggle('active', mode === 'camera');
-  document.getElementById('mode-btn-reader').classList.toggle('active', mode === 'reader');
-  if (mode !== 'camera') stopCamera();
-  if (mode === 'reader') setTimeout(() => document.getElementById('barcode-reader-input').focus(), 100);
-}
+    function setScanMode(mode) {
+      currentScanMode = mode;
+      document.getElementById('camera-mode').classList.toggle('hidden', mode !== 'camera');
+      document.getElementById('reader-mode').classList.toggle('hidden', mode !== 'reader');
+      document.getElementById('mode-btn-camera').classList.toggle('active', mode === 'camera');
+      document.getElementById('mode-btn-reader').classList.toggle('active', mode === 'reader');
+      if (mode !== 'camera') stopCamera();
+      if (mode === 'reader') setTimeout(() => document.getElementById('barcode-reader-input').focus(), 100);
+    }
 
-async function startCamera() {
-  document.getElementById('camera-start-btn').classList.add('hidden');
-  document.getElementById('camera-stop-btn').classList.remove('hidden');
+    async function startCamera() {
+      document.getElementById('camera-start-btn').classList.add('hidden');
+      document.getElementById('camera-stop-btn').classList.remove('hidden');
 
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showToast('❌ このブラウザはカメラに対応していません');
-    _resetCameraButtons();
-    return;
-  }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('❌ このブラウザはカメラに対応していません');
+        _resetCameraButtons();
+        return;
+      }
 
-  // --- 方式A: ネイティブ BarcodeDetector (Chrome/Edge) ---
-  if ('BarcodeDetector' in window) {
-    try {
-      const formats = await BarcodeDetector.getSupportedFormats();
-      const wantFormats = ['ean_13','ean_8','code_128','upc_a','upc_e','qr_code'].filter(f => formats.includes(f));
-      const detector = new BarcodeDetector({ formats: wantFormats.length ? wantFormats : ['ean_13','ean_8','code_128'] });
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      cameraStream = stream;
-      const video = document.getElementById('camera-video');
-      video.srcObject = stream;
-      video.style.display = 'block';
-      document.getElementById('quagga-container').style.display = 'none';
-      await video.play();
-
-      _usingNativeDetector = true;
-      _setEngineLabel('🟢 BarcodeDetector API (高精度)');
-
-      // video が十分なサイズになるまで待ってからポーリング開始
-      _detectionInterval = setInterval(async () => {
-        if (!detector || video.readyState < 2 || video.videoWidth === 0) return;
+      // --- 方式A: ネイティブ BarcodeDetector (Chrome/Edge) ---
+      if ('BarcodeDetector' in window) {
         try {
-          const codes = await detector.detect(video);
-          if (codes.length > 0) {
-            const code = codes[0].rawValue;
-            if (code && code !== _lastScanned) {
-              _lastScanned = code;
-              if (navigator.vibrate) navigator.vibrate(100);
-              processBarcode(code);
-              setTimeout(() => { _lastScanned = ''; }, 3000);
-            }
-          }
-        } catch (_) {}
-      }, 250);
-      return;
-    } catch (err) {
-      console.warn('BarcodeDetector 失敗、Quagga にフォールバック:', err);
-      _stopNativeStream();
-    }
-  }
+          const formats = await BarcodeDetector.getSupportedFormats();
+          const wantFormats = ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e', 'qr_code'].filter(f => formats.includes(f));
+          const detector = new BarcodeDetector({ formats: wantFormats.length ? wantFormats : ['ean_13', 'ean_8', 'code_128'] });
 
-  // --- 方式B: Quagga2 フォールバック ---
-  _usingNativeDetector = false;
-  _setEngineLabel('🟡 Quagga2 (フォールバック)');
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+          });
+          cameraStream = stream;
+          const video = document.getElementById('camera-video');
+          video.srcObject = stream;
+          video.style.display = 'block';
+          document.getElementById('quagga-container').style.display = 'none';
+          await video.play();
 
-  if (typeof Quagga === 'undefined') {
-    showToast('❌ バーコードスキャナライブラリが読み込まれていません');
-    _resetCameraButtons();
-    return;
-  }
+          _usingNativeDetector = true;
+          _setEngineLabel('🟢 BarcodeDetector API (高精度)');
 
-  const container = document.getElementById('quagga-container');
-  container.innerHTML = ''; // 前回の残骸をクリア
-  container.style.display = 'block';
-  document.getElementById('camera-video').style.display = 'none';
-
-  Quagga.init({
-    inputStream: {
-      name: 'Live',
-      type: 'LiveStream',
-      target: container,  // Quagga が独自に video を生成するコンテナ
-      constraints: {
-        facingMode: 'environment',
-        width: { min: 640 },
-        height: { min: 480 }
-      }
-    },
-    decoder: {
-      readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'],
-      multiple: false
-    },
-    locate: true,
-    frequency: 10  // フレーム処理頻度
-  }, err => {
-    if (err) {
-      showToast('Quagga エラー: ' + err);
-      _resetCameraButtons();
-      return;
-    }
-    Quagga.start();
-    quaggaRunning = true;
-  });
-
-  // onDetected は一度だけ登録（重複防止）
-  Quagga.offDetected();
-  Quagga.onDetected(result => {
-    const code = result.codeResult.code;
-    if (code && code !== _lastScanned && result.codeResult.decodedCodes.every(d => !d.error || d.error < 0.5)) {
-      _lastScanned = code;
-      if (navigator.vibrate) navigator.vibrate(100);
-      processBarcode(code);
-      setTimeout(() => { _lastScanned = ''; }, 3000);
-    }
-  });
-}
-
-function stopCamera() {
-  // BarcodeDetector ポーリング停止
-  if (_detectionInterval) { clearInterval(_detectionInterval); _detectionInterval = null; }
-  // Quagga 停止
-  if (quaggaRunning) { try { Quagga.stop(); Quagga.offDetected(); } catch(e){} quaggaRunning = false; }
-  // カメラストリーム停止
-  _stopNativeStream();
-  // Quaggaコンテナをリセット
-  const qc = document.getElementById('quagga-container');
-  if (qc) { qc.innerHTML = ''; qc.style.display = 'none'; }
-  _usingNativeDetector = false;
-  _resetCameraButtons();
-  _setEngineLabel('');
-}
-
-function _stopNativeStream() {
-  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-  const video = document.getElementById('camera-video');
-  if (video) { video.srcObject = null; video.style.display = 'none'; }
-}
-
-function _resetCameraButtons() {
-  document.getElementById('camera-start-btn').classList.remove('hidden');
-  document.getElementById('camera-stop-btn').classList.add('hidden');
-}
-
-function _setEngineLabel(text) {
-  const el = document.getElementById('scan-engine-label');
-  if (!el) return;
-  el.textContent = text;
-  el.classList.toggle('hidden', !text);
-}
-
-function handleReaderInput(event) {
-  if (event.key === 'Enter') {
-    const val = document.getElementById('barcode-reader-input').value.trim();
-    if (val) processBarcode(val);
-  }
-}
-
-function processBarcode(code) {
-  if (!code) return;
-  document.getElementById('barcode-reader-input').value = '';
-  document.getElementById('scan-barcode-display').textContent = code;
-  document.getElementById('scan-result').classList.remove('hidden');
-
-  const items = loadItems();
-  const found = items.find(i => i.barcode === code);
-
-  if (found) {
-    _scanFoundItemId = found.id;
-    document.getElementById('scan-found-item').classList.remove('hidden');
-    document.getElementById('scan-new-item').classList.add('hidden');
-    document.getElementById('scan-found-name').textContent = found.name;
-    document.getElementById('scan-found-stock').textContent = `在庫: ${found.stock} ${found.unit} ／ 発注点: ${found.threshold}`;
-    showToast('✅ 物品を認識: ' + found.name);
-  } else {
-    _scanFoundItemId = null;
-    document.getElementById('scan-found-item').classList.add('hidden');
-    document.getElementById('scan-new-item').classList.remove('hidden');
-    showToast('🆕 未登録バーコード: ' + code);
-  }
-  window._scannedBarcode = code;
-}
-
-function clearScan() {
-  document.getElementById('scan-result').classList.add('hidden');
-  document.getElementById('scan-found-item').classList.add('hidden');
-  document.getElementById('scan-new-item').classList.add('hidden');
-  document.getElementById('scan-barcode-display').textContent = '';
-  _scanFoundItemId = null;
-  window._scannedBarcode = null;
-}
-
-let _barcodeFormPrefill = false;
-function registerFromBarcode() {
-  _barcodeFormPrefill = true;
-  resetForm();
-  document.getElementById('f-barcode').value = window._scannedBarcode || '';
-  showPage('register');
-}
-
-function scanBarcodeForForm() {
-  setScanMode('camera');
-  showPage('barcode');
-}
-
-// =============================================
-// ITEM FORM
-// =============================================
-function resetForm() {
-  document.getElementById('edit-id').value = '';
-  document.getElementById('form-title').textContent = '➕ 物品を登録';
-  ['name','category','stock','unit','threshold','supplier','notes','barcode'].forEach(f => {
-    const el = document.getElementById('f-' + f);
-    if (el) el.value = '';
-  });
-  document.getElementById('form-error').classList.add('hidden');
-}
-
-function editItem(id) {
-  const items = loadItems();
-  const item = items.find(i => i.id === id);
-  if (!item) return;
-  showPage('register');
-  document.getElementById('edit-id').value = id;
-  document.getElementById('form-title').textContent = '✏️ 物品を編集';
-  document.getElementById('f-name').value = item.name;
-  document.getElementById('f-category').value = item.category;
-  document.getElementById('f-stock').value = item.stock;
-  document.getElementById('f-unit').value = item.unit;
-  document.getElementById('f-threshold').value = item.threshold;
-  document.getElementById('f-supplier').value = item.supplier || '';
-  document.getElementById('f-notes').value = item.notes || '';
-  document.getElementById('f-barcode').value = item.barcode || '';
-}
-
-function saveItem(e) {
-  e.preventDefault();
-  const name = document.getElementById('f-name').value.trim();
-  const cat = document.getElementById('f-category').value;
-  const stock = parseInt(document.getElementById('f-stock').value);
-  const unit = document.getElementById('f-unit').value.trim();
-  const threshold = parseInt(document.getElementById('f-threshold').value);
-  const supplier = document.getElementById('f-supplier').value.trim();
-  const notes = document.getElementById('f-notes').value.trim();
-  const barcode = document.getElementById('f-barcode').value.trim();
-  const errEl = document.getElementById('form-error');
-
-  if (!name || !cat || isNaN(stock) || !unit || isNaN(threshold)) {
-    errEl.textContent = '必須項目を入力してください';
-    errEl.classList.remove('hidden');
-    return;
-  }
-  errEl.classList.add('hidden');
-
-  const items = loadItems();
-  const editId = document.getElementById('edit-id').value;
-
-  // Check barcode uniqueness
-  if (barcode) {
-    const conflict = items.find(i => i.barcode === barcode && i.id !== editId);
-    if (conflict) {
-      errEl.textContent = `このバーコードは「${conflict.name}」で既に登録されています`;
-      errEl.classList.remove('hidden');
-      return;
-    }
-  }
-
-  if (editId) {
-    const idx = items.findIndex(i => i.id === editId);
-    if (idx >= 0) {
-      items[idx] = { ...items[idx], name, category: cat, stock, unit, threshold, supplier, notes, barcode, updatedAt: now() };
-    }
-    showToast('✅ 物品を更新しました');
-  } else {
-    items.push({ id: uuid(), name, barcode, category: cat, stock, unit, threshold, supplier, notes, orderStatus: 'none', orderDate: null, createdAt: now(), updatedAt: now() });
-    showToast('✅ 物品を登録しました');
-  }
-  saveItems(items);
-  showPage('inventory');
-}
-
-function cancelForm() { showPage('inventory'); }
-
-function deleteItem(id) {
-  const items = loadItems();
-  const item = items.find(i => i.id === id);
-  if (!item) return;
-  if (!confirm(`「${item.name}」を削除しますか？`)) return;
-  saveItems(items.filter(i => i.id !== id));
-  showToast('🗑️ 削除しました');
-  renderInventory();
-}
-
-// =============================================
-// CSV / JSON
-// =============================================
-function exportCSV() {
-  const items = loadItems();
-  const header = '物品名,カテゴリ,現在庫数,単位,発注点,発注先業者,バーコード,備考';
-  const rows = items.map(i => [i.name,i.category,i.stock,i.unit,i.threshold,i.supplier||'',i.barcode||'',i.notes||''].map(v => `"${v}"`).join(','));
-  const csv = [header, ...rows].join('\n');
-  downloadFile('lab_inventory.csv', 'text/csv', csv);
-  showToast('📥 CSVをダウンロードしました');
-}
-
-function importCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const lines = e.target.result.split('\n').filter(l => l.trim());
-    const items = loadItems();
-    let added = 0, updated = 0, skipped = 0;
-    lines.slice(1).forEach(line => {
-      const [name, cat, stock, unit, threshold, supplier, barcode, notes] = line.split(',').map(v => v.replace(/^"|"$/g, '').trim());
-      if (!name || isNaN(+stock) || !unit || isNaN(+threshold)) { skipped++; return; }
-      const exist = items.findIndex(i => i.name === name);
-      if (exist >= 0) {
-        if (confirm(`「${name}」は既に登録されています。上書きしますか？`)) {
-          items[exist] = { ...items[exist], category: cat||items[exist].category, stock: +stock, unit, threshold: +threshold, supplier: supplier||'', barcode: barcode||'', notes: notes||'', updatedAt: now() };
-          updated++;
+          // video が十分なサイズになるまで待ってからポーリング開始
+          _detectionInterval = setInterval(async () => {
+            if (!detector || video.readyState < 2 || video.videoWidth === 0) return;
+            try {
+              const codes = await detector.detect(video);
+              if (codes.length > 0) {
+                const code = codes[0].rawValue;
+                if (code && code !== _lastScanned) {
+                  _lastScanned = code;
+                  if (navigator.vibrate) navigator.vibrate(100);
+                  processBarcode(code);
+                  setTimeout(() => { _lastScanned = ''; }, 3000);
+                }
+              }
+            } catch (_) { }
+          }, 250);
+          return;
+        } catch (err) {
+          console.warn('BarcodeDetector 失敗、Quagga にフォールバック:', err);
+          _stopNativeStream();
         }
-      } else {
-        items.push({ id:uuid(), name, barcode: barcode||'', category: cat||'その他', stock: +stock, unit, threshold: +threshold, supplier: supplier||'', notes: notes||'', orderStatus:'none', orderDate:null, createdAt:now(), updatedAt:now() });
-        added++;
       }
-    });
-    saveItems(items);
-    showToast(`CSVインポート完了: 追加${added}件 更新${updated}件 スキップ${skipped}件`);
-    renderInventory();
-    event.target.value = '';
-  };
-  reader.readAsText(file, 'UTF-8');
-}
 
-function exportJSON() {
-  const data = { items: loadItems(), orders: loadOrders(), exportedAt: now() };
-  downloadFile('lab_inventory_backup.json', 'application/json', JSON.stringify(data, null, 2));
-  showToast('💾 バックアップをダウンロードしました');
-}
+      // --- 方式B: Quagga2 フォールバック ---
+      _usingNativeDetector = false;
+      _setEngineLabel('🟡 Quagga2 (フォールバック)');
 
-function restoreJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (!confirm('現在のデータをすべて上書きしてリストアしますか？')) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (data.items) saveItems(data.items);
-      if (data.orders) saveOrders(data.orders);
-      showToast('✅ リストア完了');
+      if (typeof Quagga === 'undefined') {
+        showToast('❌ バーコードスキャナライブラリが読み込まれていません');
+        _resetCameraButtons();
+        return;
+      }
+
+      const container = document.getElementById('quagga-container');
+      container.innerHTML = ''; // 前回の残骸をクリア
+      container.style.display = 'block';
+      document.getElementById('camera-video').style.display = 'none';
+
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: container,  // Quagga が独自に video を生成するコンテナ
+          constraints: {
+            facingMode: 'environment',
+            width: { min: 640 },
+            height: { min: 480 }
+          }
+        },
+        decoder: {
+          readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'],
+          multiple: false
+        },
+        locate: true,
+        frequency: 10  // フレーム処理頻度
+      }, err => {
+        if (err) {
+          showToast('Quagga エラー: ' + err);
+          _resetCameraButtons();
+          return;
+        }
+        Quagga.start();
+        quaggaRunning = true;
+      });
+
+      // onDetected は一度だけ登録（重複防止）
+      Quagga.offDetected();
+      Quagga.onDetected(result => {
+        const code = result.codeResult.code;
+        if (code && code !== _lastScanned && result.codeResult.decodedCodes.every(d => !d.error || d.error < 0.5)) {
+          _lastScanned = code;
+          if (navigator.vibrate) navigator.vibrate(100);
+          processBarcode(code);
+          setTimeout(() => { _lastScanned = ''; }, 3000);
+        }
+      });
+    }
+
+    function stopCamera() {
+      // BarcodeDetector ポーリング停止
+      if (_detectionInterval) { clearInterval(_detectionInterval); _detectionInterval = null; }
+      // Quagga 停止
+      if (quaggaRunning) { try { Quagga.stop(); Quagga.offDetected(); } catch (e) { } quaggaRunning = false; }
+      // カメラストリーム停止
+      _stopNativeStream();
+      // Quaggaコンテナをリセット
+      const qc = document.getElementById('quagga-container');
+      if (qc) { qc.innerHTML = ''; qc.style.display = 'none'; }
+      _usingNativeDetector = false;
+      _resetCameraButtons();
+      _setEngineLabel('');
+    }
+
+    function _stopNativeStream() {
+      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+      const video = document.getElementById('camera-video');
+      if (video) { video.srcObject = null; video.style.display = 'none'; }
+    }
+
+    function _resetCameraButtons() {
+      document.getElementById('camera-start-btn').classList.remove('hidden');
+      document.getElementById('camera-stop-btn').classList.add('hidden');
+    }
+
+    function _setEngineLabel(text) {
+      const el = document.getElementById('scan-engine-label');
+      if (!el) return;
+      el.textContent = text;
+      el.classList.toggle('hidden', !text);
+    }
+
+    function handleReaderInput(event) {
+      if (event.key === 'Enter') {
+        const val = document.getElementById('barcode-reader-input').value.trim();
+        if (val) processBarcode(val);
+      }
+    }
+
+    // 商品情報キャッシュ（フォーム自動入力用）
+    let _scannedProductData = null;
+
+    async function processBarcode(code) {
+      if (!code) return;
+      document.getElementById('barcode-reader-input').value = '';
+      document.getElementById('scan-barcode-display').textContent = code;
+      document.getElementById('scan-result').classList.remove('hidden');
+
+      const items = loadItems();
+      const found = items.find(i => i.barcode === code);
+
+      if (found) {
+        _scanFoundItemId = found.id;
+        _scannedProductData = null;
+        document.getElementById('scan-found-item').classList.remove('hidden');
+        document.getElementById('scan-new-item').classList.add('hidden');
+        document.getElementById('scan-found-name').textContent = found.name;
+        document.getElementById('scan-found-stock').textContent = `在庫: ${found.stock} ${found.unit} ／ 発注点: ${found.threshold}`;
+        showToast('✅ 物品を認識: ' + found.name);
+      } else {
+        _scanFoundItemId = null;
+        _scannedProductData = null;
+        document.getElementById('scan-found-item').classList.add('hidden');
+        document.getElementById('scan-new-item').classList.remove('hidden');
+        document.getElementById('scan-loading').classList.remove('hidden');
+        document.getElementById('scan-product-info').classList.add('hidden');
+        document.getElementById('scan-no-product').classList.add('hidden');
+        showToast('🔍 商品情報を取得中...');
+
+        // Open Food Facts API から商品情報を取得
+        try {
+          const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`, { signal: AbortSignal.timeout(6000) });
+          const data = await res.json();
+          document.getElementById('scan-loading').classList.add('hidden');
+
+          if (data.status === 1 && data.product) {
+            const p = data.product;
+            // 商品名（日本語即先、なければ英語名）
+            const productName = p.product_name_ja || p.product_name || '';
+            const brand = p.brands || '';
+            // カテゴリ推定（カテゴリタグからォーバーライド）
+            const catTags = (p.categories_tags || []).join(' ');
+            let category = 'その他';
+            if (/chemical|reagent|試薬|薇/.test(catTags + productName)) category = '試薬';
+            else if (/tool|instrument|器具|equipment/.test(catTags + productName)) category = '器具';
+            else if (productName) category = '消耗品';
+
+            _scannedProductData = { name: productName, brand, category, barcode: code };
+
+            document.getElementById('scan-product-name').textContent = productName || '(名称不明)';
+            document.getElementById('scan-product-brand').textContent = brand ? `メーカー: ${brand}` : '';
+            document.getElementById('scan-product-category').textContent = `推定カテゴリ: ${category}`;
+            document.getElementById('scan-product-info').classList.remove('hidden');
+            showToast(`📦 商品を検索しました: ${productName || '名称不明'}`);
+          } else {
+            // 未登録・取得失敗
+            _scannedProductData = { name: '', brand: '', category: '', barcode: code };
+            document.getElementById('scan-no-product').classList.remove('hidden');
+            showToast('🔍 DBに未登録 — 手動入力してください');
+          }
+        } catch (e) {
+          document.getElementById('scan-loading').classList.add('hidden');
+          _scannedProductData = { name: '', brand: '', category: '', barcode: code };
+          document.getElementById('scan-no-product').classList.remove('hidden');
+          showToast('通信エラー — 手動入力で登録できます');
+        }
+      }
+      window._scannedBarcode = code;
+    }
+
+    function clearScan() {
+      document.getElementById('scan-result').classList.add('hidden');
+      document.getElementById('scan-found-item').classList.add('hidden');
+      document.getElementById('scan-new-item').classList.add('hidden');
+      document.getElementById('scan-barcode-display').textContent = '';
+      _scanFoundItemId = null;
+      window._scannedBarcode = null;
+    }
+
+    let _barcodeFormPrefill = false;
+    function registerFromBarcode() {
+      _barcodeFormPrefill = true;
+      resetForm();
+      const bc = window._scannedBarcode || '';
+      document.getElementById('f-barcode').value = bc;
+      // 商品情報を取得できていた場合はフォームに自動入力
+      if (_scannedProductData) {
+        if (_scannedProductData.name) document.getElementById('f-name').value = _scannedProductData.name;
+        if (_scannedProductData.category) document.getElementById('f-category').value = _scannedProductData.category;
+        if (_scannedProductData.brand) document.getElementById('f-supplier').value = _scannedProductData.brand;
+      }
+      showPage('register');
+    }
+
+    function scanBarcodeForForm() {
+      setScanMode('camera');
+      showPage('barcode');
+    }
+
+    // =============================================
+    // ITEM FORM
+    // =============================================
+    function resetForm() {
+      document.getElementById('edit-id').value = '';
+      document.getElementById('form-title').textContent = '➕ 物品を登録';
+      ['name', 'category', 'stock', 'unit', 'threshold', 'supplier', 'notes', 'barcode'].forEach(f => {
+        const el = document.getElementById('f-' + f);
+        if (el) el.value = '';
+      });
+      document.getElementById('form-error').classList.add('hidden');
+    }
+
+    function editItem(id) {
+      const items = loadItems();
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      showPage('register');
+      document.getElementById('edit-id').value = id;
+      document.getElementById('form-title').textContent = '✏️ 物品を編集';
+      document.getElementById('f-name').value = item.name;
+      document.getElementById('f-category').value = item.category;
+      document.getElementById('f-stock').value = item.stock;
+      document.getElementById('f-unit').value = item.unit;
+      document.getElementById('f-threshold').value = item.threshold;
+      document.getElementById('f-supplier').value = item.supplier || '';
+      document.getElementById('f-notes').value = item.notes || '';
+      document.getElementById('f-barcode').value = item.barcode || '';
+    }
+
+    function saveItem(e) {
+      e.preventDefault();
+      const name = document.getElementById('f-name').value.trim();
+      const cat = document.getElementById('f-category').value;
+      const stock = parseInt(document.getElementById('f-stock').value);
+      const unit = document.getElementById('f-unit').value.trim();
+      const threshold = parseInt(document.getElementById('f-threshold').value);
+      const supplier = document.getElementById('f-supplier').value.trim();
+      const notes = document.getElementById('f-notes').value.trim();
+      const barcode = document.getElementById('f-barcode').value.trim();
+      const errEl = document.getElementById('form-error');
+
+      if (!name || !cat || isNaN(stock) || !unit || isNaN(threshold)) {
+        errEl.textContent = '必須項目を入力してください';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+
+      const items = loadItems();
+      const editId = document.getElementById('edit-id').value;
+
+      // Check barcode uniqueness
+      if (barcode) {
+        const conflict = items.find(i => i.barcode === barcode && i.id !== editId);
+        if (conflict) {
+          errEl.textContent = `このバーコードは「${conflict.name}」で既に登録されています`;
+          errEl.classList.remove('hidden');
+          return;
+        }
+      }
+
+      if (editId) {
+        const idx = items.findIndex(i => i.id === editId);
+        if (idx >= 0) {
+          items[idx] = { ...items[idx], name, category: cat, stock, unit, threshold, supplier, notes, barcode, updatedAt: now() };
+        }
+        showToast('✅ 物品を更新しました');
+      } else {
+        items.push({ id: uuid(), name, barcode, category: cat, stock, unit, threshold, supplier, notes, orderStatus: 'none', orderDate: null, createdAt: now(), updatedAt: now() });
+        showToast('✅ 物品を登録しました');
+      }
+      saveItems(items);
+      showPage('inventory');
+    }
+
+    function cancelForm() { showPage('inventory'); }
+
+    function deleteItem(id) {
+      const items = loadItems();
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      if (!confirm(`「${item.name}」を削除しますか？`)) return;
+      saveItems(items.filter(i => i.id !== id));
+      showToast('🗑️ 削除しました');
       renderInventory();
-    } catch { showToast('❌ JSONファイルが不正です'); }
-    event.target.value = '';
-  };
-  reader.readAsText(file, 'UTF-8');
-}
+    }
 
-function downloadFile(name, type, content) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content], { type }));
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+    // =============================================
+    // CSV / JSON
+    // =============================================
+    function exportCSV() {
+      const items = loadItems();
+      const header = '物品名,カテゴリ,現在庫数,単位,発注点,発注先業者,バーコード,備考';
+      const rows = items.map(i => [i.name, i.category, i.stock, i.unit, i.threshold, i.supplier || '', i.barcode || '', i.notes || ''].map(v => `"${v}"`).join(','));
+      const csv = [header, ...rows].join('\n');
+      downloadFile('lab_inventory.csv', 'text/csv', csv);
+      showToast('📥 CSVをダウンロードしました');
+    }
 
-// =============================================
-// TOAST
-// =============================================
-let _toastTimer = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  document.getElementById('toast-msg').textContent = msg;
-  t.classList.remove('hidden');
-  if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
-}
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const lines = e.target.result.split('\n').filter(l => l.trim());
+        const items = loadItems();
+        let added = 0, updated = 0, skipped = 0;
+        lines.slice(1).forEach(line => {
+          const [name, cat, stock, unit, threshold, supplier, barcode, notes] = line.split(',').map(v => v.replace(/^"|"$/g, '').trim());
+          if (!name || isNaN(+stock) || !unit || isNaN(+threshold)) { skipped++; return; }
+          const exist = items.findIndex(i => i.name === name);
+          if (exist >= 0) {
+            if (confirm(`「${name}」は既に登録されています。上書きしますか？`)) {
+              items[exist] = { ...items[exist], category: cat || items[exist].category, stock: +stock, unit, threshold: +threshold, supplier: supplier || '', barcode: barcode || '', notes: notes || '', updatedAt: now() };
+              updated++;
+            }
+          } else {
+            items.push({ id: uuid(), name, barcode: barcode || '', category: cat || 'その他', stock: +stock, unit, threshold: +threshold, supplier: supplier || '', notes: notes || '', orderStatus: 'none', orderDate: null, createdAt: now(), updatedAt: now() });
+            added++;
+          }
+        });
+        saveItems(items);
+        showToast(`CSVインポート完了: 追加${added}件 更新${updated}件 スキップ${skipped}件`);
+        renderInventory();
+        event.target.value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
 
-// =============================================
-// INIT
-// =============================================
-initSampleData();
-renderInventory();
+    function exportJSON() {
+      const data = { items: loadItems(), orders: loadOrders(), exportedAt: now() };
+      downloadFile('lab_inventory_backup.json', 'application/json', JSON.stringify(data, null, 2));
+      showToast('💾 バックアップをダウンロードしました');
+    }
+
+    function restoreJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!confirm('現在のデータをすべて上書きしてリストアしますか？')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.items) saveItems(data.items);
+          if (data.orders) saveOrders(data.orders);
+          showToast('✅ リストア完了');
+          renderInventory();
+        } catch { showToast('❌ JSONファイルが不正です'); }
+        event.target.value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function downloadFile(name, type, content) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([content], { type }));
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // =============================================
+    // TOAST
+    // =============================================
+    let _toastTimer = null;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      t.classList.remove('hidden');
+      if (_toastTimer) clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    // =============================================
+    // INIT
+    // =============================================
+    initSampleData();
+    renderInventory();
   </script>
 </body>
 
